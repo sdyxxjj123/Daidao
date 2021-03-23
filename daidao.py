@@ -52,13 +52,13 @@ def get_web_address():
 
 yobot_url = get_web_address()
 if not yobot_url:
-    yobot_url = 'http://www.ftcloud.club:9222/yobot/' 
+    yobot_url = '' 
     # 获取主页地址：在群内向bot发送指令“手册”，复制bot发送的链接地址，删除末尾的manual/后即为主页地址
     # 例:https://域名/目录/或http://IP地址:端口号/目录/,注意不要漏掉最后的斜杠！
 
 DB_PATH = get_db_path()
 if not DB_PATH:
-    DB_PATH = 'C:/Users/Administrator/Desktop/HoshinoBot/HoshinoBot/hoshino/modules/yobot/yobot/src/client/yobot_data/yobotdata.db'
+    DB_PATH = ''
     # 例：C:/Hoshino/hoshino/modules/yobot/yobot/src/client/yobot_data/yobotdata.db
     # 注意斜杠方向！！！
     #  
