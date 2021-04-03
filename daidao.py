@@ -396,7 +396,7 @@ class DAICounter:
                           (GID             INT    NOT NULL,
                            UID           INT    NOT NULL,
                            ID           INT    NOT NULL,
-                           SH           INT    NOT NULL,
+                           SH           NTEXT    NOT NULL,
                            PRIMARY KEY(GID, UID));''')
         except:
             raise Exception('创建挂树表发生错误')
@@ -664,20 +664,28 @@ async def guashu(bot, ev: CQEvent):
 async def guashu_del(bot, ev: CQEvent):
     count = 0
     id = ev.user_id
+    dai = DAICounter()
+    gid = ev.group_id
     for m in ev.message:
         if m.type == 'at' and m.data['qq'] != 'all':
             uid = int(m.data['qq'])
             user_card = await get_user_card(bot, ev.group_id, ev.user_id)
             user_card2 = await get_user_card(bot, ev.group_id, uid)
-            dai._delete_GS(giu,uid)
-            await bot.send(ev, f'{user_card2}已取消{user_card}的挂树状态！')
-            count += 1
+            if dai._get_GS_id(gid,uid) !=0:
+                dai._delete_GS(gid,uid)
+                await bot.send(ev, f'{user_card2}已取消{user_card}的挂树状态！')
+            else:
+                await bot.send(ev, f'{user_card}没有挂树！')
+            count += 1   
     if count:
         await bot.send(ev, f"{user_card}在代刀中挂树！已通知{count}位用户！")
     else:
         uid = ev.user_id
-        dai._delete_GS(giu,uid)
-        await bot.send(ev, '已取消挂树')
+        if dai._get_GS_id(gid,uid) !=0:
+            dai._delete_GS(gid,uid)
+            await bot.send(ev, f'已取消挂树状态！')
+        else:
+            await bot.send(ev, f'您没有挂树！')
 
 @sv.on_prefix(('取消代刀','结束代刀'))
 async def quxiao(bot, ev: CQEvent):
@@ -699,7 +707,7 @@ async def quxiao(bot, ev: CQEvent):
             else:
                 await bot.finish(ev, f'{user_card2}未在代刀状态！')
 
-@sv.on_rex(f'^暂停(\d+)$')
+@sv.on_rex(f'^暂停(:|：)(.*)$')
 async def zt(bot, ev: CQEvent):
     gid = ev.group_id
     id = ev.user_id
@@ -710,10 +718,7 @@ async def zt(bot, ev: CQEvent):
     except:
         uid = ev.user_id
     user_card = await get_user_card(bot, ev.group_id, uid)
-    try:
-        num = int(match.group(1))
-    except:
-        await bot.finish(ev, '伤害不能转化为数字！')
+    num = str(match.group(2))
     if dai._get_SHB_SH(gid,uid) != 0:
         dai._set_SH_owner(gid,uid,id,num)
         await bot.finish(ev, f'您的暂停伤害已更新为{num}！')
