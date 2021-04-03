@@ -11,10 +11,7 @@ from io import BytesIO
 from PIL import Image
 import hoshino
 from hoshino import Service, priv
-from hoshino.modules.priconne import _pcr_data_duel
-from hoshino.modules.priconne import chara_duel as chara
 from hoshino.typing import CQEvent
-from hoshino.util import DailyNumberLimiter
 import copy
 import json
 import nonebot
@@ -68,6 +65,15 @@ async def get_user_card(bot, group_id, user_id):
         if m['user_id'] == user_id:
             return m['card'] if m['card']!='' else m['nickname']
     return str(user_id)
+
+async def get_group_sv(gid:str) -> str:
+    apikey = get_apikey(gid)
+    url = f'{yobot_url}clan/{gid}/statistics/api/?apikey={apikey}'
+    session = aiohttp.ClientSession()
+    async with session.get(url) as resp:
+        data = await resp.json()
+        server = data["groupinfo"][-1]["game_server"]  # 获取服务器
+        return server
 
 def get_apikey(gid:str) -> str:
     # 获取apikey
@@ -182,6 +188,9 @@ class DAICounter:
         os.makedirs(os.path.dirname(DAIDAO_DB_PATH), exist_ok=True)
         self._create_Beidai()
         self._create_BCD()
+        self._create_ZZ()
+        self._create_GS()
+        self._create_SHB()
 
     def _connect(self):
         return sqlite3.connect(DAIDAO_DB_PATH)
@@ -294,6 +303,159 @@ class DAICounter:
         except:
             raise Exception('查找uid表发生错误')
 
+#助战部分
+    def _create_ZZ(self):
+        try:
+            self._connect().execute('''CREATE TABLE IF NOT EXISTS ZZ
+                          (GID             INT    NOT NULL,
+                           UID           INT    NOT NULL,
+                           ZZ            NTEXT   NOT NULL,
+                           NUM           INT    NOT NULL,
+                           PRIMARY KEY(GID, UID));''')
+        except:
+            raise Exception('创建锁助战表发生错误')
+
+    def _get_ZZ_Suo(self, gid, uid):
+        try:
+            r = self._connect().execute("SELECT ZZ FROM ZZ WHERE GID=? AND UID=?", (gid, uid)).fetchone()
+            return 0 if r is None else r[0]
+        except:
+            raise Exception('查找助战归属发生错误')
+            
+    def _get_ZZ_Suo_list(self, gid, uid):
+        try:
+            r = self._connect().execute("SELECT ZZ FROM ZZ WHERE GID=? AND UID=?", (gid, uid)).fetchone()
+            return 0 if r is None else r[0]
+        except:
+            raise Exception('查找助战归属发生错误')
+            
+    def _set_ZZ_owner(self, gid, uid, ZZ, num=1):
+        with self._connect() as conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO ZZ (GID, UID, ZZ, NUM) VALUES (?, ?, ?,?)",
+                (gid, uid, ZZ, num),
+            )
+
+    def _delete_ZZ_Suo(self, gid, uid):
+        with self._connect() as conn:
+            conn.execute(
+                "DELETE FROM ZZ  WHERE GID=? AND UID=?",
+                (gid, uid),
+            )
+#挂树部分
+    def _create_GS(self):
+        try:
+            self._connect().execute('''CREATE TABLE IF NOT EXISTS GS
+                          (GID             INT    NOT NULL,
+                           UID           INT    NOT NULL,
+                           HOUR            NTEXT   NOT NULL,
+                           MIN           INT    NOT NULL,
+                           ID           INT    NOT NULL,
+                           PRIMARY KEY(GID, UID));''')
+        except:
+            raise Exception('创建挂树表发生错误')
+
+    def _get_GS_Hour(self, gid, uid):
+        try:
+            r = self._connect().execute("SELECT HOUR FROM GS WHERE GID=? AND UID=?", (gid, uid)).fetchone()
+            return 0 if r is None else r[0]
+        except:
+            raise Exception('查找挂树时间发生错误')
+    
+    def _get_GS_MIN(self, gid, uid):
+        try:
+            r = self._connect().execute("SELECT MIN FROM GS WHERE GID=? AND UID=?", (gid, uid)).fetchone()
+            return 0 if r is None else r[0]
+        except:
+            raise Exception('查找挂树时间发生错误')
+
+    def _get_GS_id(self, gid, uid):
+        try:
+            r = self._connect().execute("SELECT ID FROM GS WHERE GID=? AND UID=?", (gid, uid)).fetchone()
+            return 0 if r is None else r[0]
+        except:
+            raise Exception('查找挂树归属发生错误')
+            
+    def _set_GS_owner(self, gid, uid, Hour, Min, id):
+        with self._connect() as conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO GS (GID, UID, HOUR, MIN ,ID) VALUES (?, ?, ?, ?, ?)",
+                (gid, uid, Hour, Min, id),
+            )
+
+    def _delete_GS(self, gid, uid):
+        with self._connect() as conn:
+            conn.execute(
+                "DELETE FROM GS  WHERE GID=? AND UID=?",
+                (gid, uid),
+            )
+#暂停伤害部分
+    def _create_SHB(self):
+        try:
+            self._connect().execute('''CREATE TABLE IF NOT EXISTS SHB
+                          (GID             INT    NOT NULL,
+                           UID           INT    NOT NULL,
+                           ID           INT    NOT NULL,
+                           SH           INT    NOT NULL,
+                           PRIMARY KEY(GID, UID));''')
+        except:
+            raise Exception('创建挂树表发生错误')
+
+    def _get_SHB_SH(self, gid, uid):
+        try:
+            r = self._connect().execute("SELECT SH FROM SHB WHERE GID=? AND UID=?", (gid, uid)).fetchone()
+            return 0 if r is None else r[0]
+        except:
+            raise Exception('查找挂树时间发生错误')
+    
+    def _get_SHB_ID(self, gid, uid):
+        try:
+            r = self._connect().execute("SELECT ID FROM SHB WHERE GID=? AND UID=?", (gid, uid)).fetchone()
+            return 0 if r is None else r[0]
+        except:
+            raise Exception('查找挂树时间发生错误')
+
+    def _set_SH_owner(self, gid, uid, id, sh):
+        with self._connect() as conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO SHB (GID, UID, ID, SH) VALUES (?, ?, ?, ?)",
+                (gid, uid, id, sh),
+            )
+
+    def _delete_SH(self, gid, uid):
+        with self._connect() as conn:
+            conn.execute(
+                "DELETE FROM SHB  WHERE GID=? AND UID=?",
+                (gid, uid),
+            )    
+#获取列表部分    
+    def _get_SH_uid_list(self, gid):
+        try:
+            r = self._connect().execute("SELECT DISTINCT(UID) FROM SHB WHERE GID=? ", (gid,)).fetchall()
+            return [u[0] for u in r] if r else {}
+        except:
+            raise Exception('查找uid表发生错误')
+
+    def _get_GS_uid_list(self, gid):
+        try:
+            r = self._connect().execute("SELECT DISTINCT(UID) FROM GS WHERE GID=? ", (gid,)).fetchall()
+            return [u[0] for u in r] if r else {}
+        except:
+            raise Exception('查找uid表发生错误')
+
+    def _get_DD_uid_list(self, gid):
+        try:
+            r = self._connect().execute("SELECT DISTINCT(UID) FROM BEIDAI WHERE GID=? ", (gid,)).fetchall()
+            return [u[0] for u in r] if r else {}
+        except:
+            raise Exception('查找uid表发生错误')
+
+    def _get_ZZ_uid_list(self, gid):
+        try:
+            r = self._connect().execute("SELECT DISTINCT(UID) FROM ZZ WHERE GID=? ", (gid,)).fetchall()
+            return [u[0] for u in r] if r else {}
+        except:
+            raise Exception('查找uid表发生错误')
 
 @sv.on_prefix(('代刀中','正在代刀','代刀'))
 async def kakin(bot, ev: CQEvent):
@@ -344,6 +506,9 @@ async def baodao(bot, ev: CQEvent):
             uid = int(m.data['qq'])
             dai._delete_DAIDAO_owner(gid,uid)
             dai._delete_Weidao_owner(gid,uid)
+            dai._delete_ZZ_Suo(gid,uid)
+            dai._delete_GS(gid,uid)
+            dai._delete_SH(gid,uid)
             user_card = await get_user_card(bot, ev.group_id, ev.user_id)
             num += 1
             try:
@@ -352,7 +517,11 @@ async def baodao(bot, ev: CQEvent):
             except:
                 await bot.send(ev, '发送私聊代刀消息时发生错误，该用户可能没有私聊过机器人（但代刀正常记录）')
     if num == 0:
-        dai._delete_DAIDAO_owner(gid,ev.user_id)
+        uid = ev.user_id
+        dai._delete_DAIDAO_owner(gid,uid)
+        dai._delete_GS(gid,uid)
+        dai._delete_SH(gid,uid)
+        dai._delete_ZZ_Suo(gid,uid)
         
 @sv.on_prefix('查询代刀')
 async def kakin(bot, ev: CQEvent):
@@ -393,11 +562,28 @@ async def weidao(bot, ev: CQEvent):
     gid = ev.group_id
     num = 0
     kill = 0
+    umlist = dai._get_SH_uid_list(gid)
+    if umlist !=0:
+        msgSH = "暂停的下来吧:\n"
+        for s in range(len(umlist)):
+            uid = int(umlist[s])
+            dai._delete_SH(gid,uid)
+            msgSH += f"[CQ:at,qq={uid}]"
+        await bot.send(ev, msgSH)
+    umlist = dai._get_GS_uid_list(gid)
+    if umlist !=0:
+        msgGS = "挂树的下来吧:\n"
+        for s in range(len(umlist)):
+            uid = int(umlist[s])
+            dai._delete_GS(gid,uid)
+            msgGS += f"[CQ:at,qq={uid}]"
+        await bot.send(ev, msgGS) 
     for m in ev.message:
         if m.type == 'at' and m.data['qq'] != 'all':
             uid = int(m.data['qq'])
             user_card = await get_user_card(bot, ev.group_id, ev.user_id)
             dai._delete_DAIDAO_owner(gid,uid)
+            dai._delete_ZZ_Suo(gid,uid)
             print 
             if dai._get_Weidao_owner(gid,uid) != 0:
                 dai._delete_Weidao_owner(gid,uid)
@@ -440,7 +626,10 @@ async def SLL(bot, ev: CQEvent):
         if m.type == 'at' and m.data['qq'] != 'all':
             uid = int(m.data['qq'])
             user_card = await get_user_card(bot, ev.group_id, ev.user_id)
-            await bot.send_private_msg(user_id=int(uid), message=f'您好~代刀手{user_card}({ev.user_id})使用了您的SL!请关注群消息！')
+            try:
+                await bot.send_private_msg(user_id=int(uid), message=f'您好~代刀手{user_card}({ev.user_id})使用了您的SL!请关注群消息！')
+            except:
+                await bot.send(ev, '发送私聊代刀消息时发生错误，该用户可能没有私聊过机器人（但代刀正常记录）')
             count += 1
     if count:
         await bot.send(ev, f"{user_card}在代刀中使用了SL！已通知{count}位用户！")
@@ -448,15 +637,48 @@ async def SLL(bot, ev: CQEvent):
 @sv.on_prefix('挂树')
 async def guashu(bot, ev: CQEvent):
     count = 0
+    now = datetime.now(pytz.timezone('Asia/Shanghai'))
+    Hour = now.hour
+    Min = now.minute
+    dai = DAICounter()
+    gid = ev.group_id
+    id = ev.user_id
     for m in ev.message:
         if m.type == 'at' and m.data['qq'] != 'all':
             uid = int(m.data['qq'])
             user_card = await get_user_card(bot, ev.group_id, ev.user_id)
-            await bot.send_private_msg(user_id=int(uid), message=f'您好~代刀手{user_card}({ev.user_id})在您的账号上代刀时挂树!请暂时不要登陆并关注群消息！')
+            dai._set_GS_owner(gid,uid,Hour,Min,id)
+            try:
+                await bot.send_private_msg(user_id=int(uid), message=f'您好~代刀手{user_card}({ev.user_id})在您的账号上代刀时挂树!请暂时不要登陆并关注群消息！')
+            except:
+                await bot.send(ev, '发送私聊代刀消息时发生错误，该用户可能没有私聊过机器人（但代刀正常记录）')
             count += 1
     if count:
         await bot.send(ev, f"{user_card}在代刀中挂树！已通知{count}位用户！")
-        
+    else:
+        uid = ev.user_id
+        dai._set_GS_owner(gid,uid,Hour,Min,id)
+        await bot.send(ev, '已记录挂树')
+
+@sv.on_prefix('取消挂树')
+async def guashu_del(bot, ev: CQEvent):
+    count = 0
+    id = ev.user_id
+    for m in ev.message:
+        if m.type == 'at' and m.data['qq'] != 'all':
+            uid = int(m.data['qq'])
+            user_card = await get_user_card(bot, ev.group_id, ev.user_id)
+            user_card2 = await get_user_card(bot, ev.group_id, uid)
+            dai._delete_GS(giu,uid)
+            await bot.send(ev, f'{user_card2}已取消{user_card}的挂树状态！')
+            count += 1
+    if count:
+        await bot.send(ev, f"{user_card}在代刀中挂树！已通知{count}位用户！")
+    else:
+        uid = ev.user_id
+        dai._delete_GS(giu,uid)
+        await bot.send(ev, '已取消挂树')
+
 @sv.on_prefix(('取消代刀','结束代刀'))
 async def quxiao(bot, ev: CQEvent):
     dai = DAICounter()
@@ -477,6 +699,50 @@ async def quxiao(bot, ev: CQEvent):
             else:
                 await bot.finish(ev, f'{user_card2}未在代刀状态！')
 
+@sv.on_rex(f'^暂停(\d+)$')
+async def zt(bot, ev: CQEvent):
+    gid = ev.group_id
+    id = ev.user_id
+    dai = DAICounter()
+    match = ev['match']
+    try:
+        uid = int(ev.message[1].data['qq'])
+    except:
+        uid = ev.user_id
+    user_card = await get_user_card(bot, ev.group_id, uid)
+    try:
+        num = int(match.group(1))
+    except:
+        await bot.finish(ev, '伤害不能转化为数字！')
+    if dai._get_SHB_SH(gid,uid) != 0:
+        dai._set_SH_owner(gid,uid,id,num)
+        await bot.finish(ev, f'您的暂停伤害已更新为{num}！')
+    else:
+        dai._set_SH_owner(gid,uid,id,num)
+        await bot.finish(ev, f'已记录{user_card}的伤害为{num}！')
+
+
+@sv.on_rex(f'^(.*)锁助战(.*)$')
+async def ZZS(bot, ev: CQEvent):
+    gid = ev.group_id
+    match = ev['match']
+    try:
+        uid = int(ev.message[1].data['qq'])
+    except:
+        await bot.finish(ev, '参数格式错误')
+    name = str(match.group(2))
+    dai = DAICounter()
+    user_card = await get_user_card(bot, ev.group_id, uid)
+    for m in ev.message:
+        if m.type == 'at' and m.data['qq'] != 'all':
+            uid = int(m.data['qq'])
+            owner = dai._get_ZZ_Suo(gid,uid)
+            if owner == 0:
+                dai._set_ZZ_owner(gid,uid,name)
+                await bot.send(ev, f"已记录{user_card}被锁定助战{name}")
+            else:
+                await bot.finish(ev, f'{user_card}已经有被登记的锁助战信息了！')
+                
 async def get_user_card_dict(bot, group_id):
     mlist = await bot.get_group_member_list(group_id=group_id)
     d = {}
@@ -491,8 +757,125 @@ async def get_gid_dict(bot, group_id):
         d[m['group_id']] = m['group_id']
     return d   
 
+@sv.on_fullmatch('详细状态')
+async def XXZT(bot, ev: CQEvent):
+        user_card_dict = await get_user_card_dict(bot, ev.group_id)
+        score_dict = {}
+        score_dict2 = {}
+        dai = DAICounter()
+        gid = ev.group_id
+        for uid in user_card_dict.keys():
+            if uid != ev.self_id:
+                owner = dai._get_Daidao_owner(gid,uid)
+                if owner !=0:
+                    Zhou = dai._get_Daidao_ZHOU(gid,uid)
+                    Hao = dai._get_Daidao_HAO(gid,uid)
+                    user = await get_user_card(bot, ev.group_id, owner)
+                    score_dict[user_card_dict[uid]] = [Zhou,Hao,user]
+                else:
+                    continue
+        group_ranking = sorted(score_dict.items(),key = lambda x:x[1],reverse = True)
+        msg1 = '当前正在被代刀的有:\n'
+        for i in range(len(group_ranking)):
+            if group_ranking[i][1] != 0:
+                msg1 += f'{i+1}. {group_ranking[i][0]} 在{group_ranking[i][1][0]}周目{group_ranking[i][1][1]}号BOSS被{group_ranking[i][1][2]}发起代刀\n'
+        if msg1 == '当前正在被代刀的有:\n':
+            msg1 = '当前没有人正在被代刀\n'
+        score_dict = {}
+        score_dict2 = {}
+        for uid in user_card_dict.keys():
+            if uid != ev.self_id:
+                owner = dai._get_ZZ_Suo(gid,uid)
+                if owner !=0:
+                    num = dai._get_ZZ_Suo_list(gid,uid)
+                    name = dai._get_ZZ_Suo(gid,uid)
+                    score_dict[user_card_dict[uid]] = [num,name]
+                else:
+                    continue
+        group_ranking = sorted(score_dict.items(),key = lambda x:x[1],reverse = True)
+        msg2 = '当前锁助战的有:\n'
+        for i in range(len(group_ranking)):
+            if group_ranking[i][1] != 0:
+                msg2 += f'{i+1}. {group_ranking[i][0]} 锁了{group_ranking[i][1][0]}助战\n'
+        if msg2 == '当前锁助战的有:\n':
+            msg2 = '当前没有人锁助战\n'
+        score_dict = {}
+        score_dict2 = {}
+        for uid in user_card_dict.keys():
+            if uid != ev.self_id:
+                owner = dai._get_SHB_SH(gid,uid)
+                if owner !=0:
+                    SH = dai._get_SHB_SH(gid,uid)
+                    id = dai._get_SHB_ID(gid,uid)
+                    user = await get_user_card(bot, ev.group_id, id)
+                    score_dict[user_card_dict[uid]] = [SH,user]
+                else:
+                    continue
+        group_ranking = sorted(score_dict.items(),key = lambda x:x[1],reverse = True)
+        msg3 = '当前暂停的有:\n'
+        for i in range(len(group_ranking)):
+            if group_ranking[i][1] != 0:
+                msg3 += f'{i+1}. {group_ranking[i][0]} 伤害：{group_ranking[i][1][0]} 刀手：{group_ranking[i][1][1]}\n'
+        if msg3 == '当前暂停的有:\n':
+            msg3 = '当前没有人成刀暂停\n'
+
+        score_dict = {}
+        score_dict2 = {}
+        for uid in user_card_dict.keys():
+            if uid != ev.self_id:
+                owner = dai._get_GS_id(gid,uid)
+                if owner !=0:
+                    Hour = dai._get_GS_Hour(gid,uid)
+                    Min = dai._get_GS_MIN(gid,uid)
+                    id = dai._get_GS_id(gid,uid)
+                    user = await get_user_card(bot, ev.group_id, id)
+                    score_dict[user_card_dict[uid]] =  [Hour,Min,user]
+                else:
+                    continue
+        group_ranking = sorted(score_dict.items(),key = lambda x:x[1],reverse = True)
+
+        msg4 = '当前挂树的有:\n'
+        for i in range(len(group_ranking)):
+            if group_ranking[i][1] != 0:
+                msg4 += f'{i+1}. {group_ranking[i][0]} 挂树开始时间：{group_ranking[i][1][0]} 时{group_ranking[i][1][1]} 分 刀手：{group_ranking[i][1][2]}\n'
+        if msg4 == '当前挂树的有:\n':
+            msg4 = '当前没有人挂树\n'
+        server = str(await get_group_sv(gid))
+        if server == 'cn':
+            msg =msg1+msg2+msg3+msg4
+        else:
+            msg =msg1+msg3+msg4
+        await bot.send(ev, msg.strip())
+
+@sv.on_fullmatch('查树')
+async def CHASHU(bot, ev: CQEvent):
+        user_card_dict = await get_user_card_dict(bot, ev.group_id)
+        score_dict = {}
+        score_dict2 = {}
+        dai = DAICounter()
+        gid = ev.group_id
+        for uid in user_card_dict.keys():
+            if uid != ev.self_id:
+                owner = dai._get_GS_id(gid,uid)
+                if owner !=0:
+                    Hour = dai._get_GS_Hour(gid,uid)
+                    Min = dai._get_GS_MIN(gid,uid)
+                    id = dai._get_GS_id(gid,uid)
+                    user = await get_user_card(bot, ev.group_id, id)
+                    score_dict[user_card_dict[uid]] =  [Hour,Min,user]
+                else:
+                    continue
+        group_ranking = sorted(score_dict.items(),key = lambda x:x[1],reverse = True)
+        msg = '当前挂树的有:\n'
+        for i in range(len(group_ranking)):
+            if group_ranking[i][1] != 0:
+                msg += f'{i+1}. {group_ranking[i][0]} 挂树开始时间：{group_ranking[i][1][0]} 时{group_ranking[i][1][1]} 分 刀手：{group_ranking[i][1][2]}\n'
+        if msg == '当前挂树的有:\n':
+            msg = '当前没有人挂树\n'
+        await bot.send(ev, msg.strip())
+
 @sv.on_fullmatch('代刀列表')
-async def Race_ranking(bot, ev: CQEvent):
+async def DDB(bot, ev: CQEvent):
         user_card_dict = await get_user_card_dict(bot, ev.group_id)
         score_dict = {}
         score_dict2 = {}
@@ -516,9 +899,34 @@ async def Race_ranking(bot, ev: CQEvent):
         if msg == '当前正在被代刀的有:\n':
             msg = '当前没有人正在被代刀'
         await bot.send(ev, msg.strip())
-
+    
+@sv.on_fullmatch(('锁助战列表', '锁助战列表的有谁'))
+async def ZZ_SS(bot, ev: CQEvent):
+        user_card_dict = await get_user_card_dict(bot, ev.group_id)
+        score_dict = {}
+        score_dict2 = {}
+        dai = DAICounter()
+        gid = ev.group_id
+        for uid in user_card_dict.keys():
+            if uid != ev.self_id:
+                owner = dai._get_ZZ_Suo(gid,uid)
+                if owner !=0:
+                    num = dai._get_ZZ_Suo_list(gid,uid)
+                    name = dai._get_ZZ_Suo(gid,uid)
+                    score_dict[user_card_dict[uid]] = [num,name]
+                else:
+                    continue
+        group_ranking = sorted(score_dict.items(),key = lambda x:x[1],reverse = True)
+        msg = '当前锁助战的有:\n'
+        for i in range(len(group_ranking)):
+            if group_ranking[i][1] != 0:
+                msg += f'{i+1}. {group_ranking[i][0]} 锁了{group_ranking[i][1][0]}助战\n'
+        if msg == '当前锁助战的有:\n':
+            msg = '当前没有人锁助战'
+        await bot.send(ev, msg.strip())
+              
 @sv.on_fullmatch('补偿刀列表')
-async def Race_ranking(bot, ev: CQEvent):
+async def BCB(bot, ev: CQEvent):
         user_card_dict = await get_user_card_dict(bot, ev.group_id)
         score_dict = {}
         score_dict2 = {}
@@ -565,3 +973,49 @@ async def Reset(bot, ev: CQEvent):
         uid = int(umlist[s])   
         dai._delete_Weidao_owner(gid,uid)
     await bot.finish(ev, '已清空目前记录的补偿刀数据！')
+
+@sv.scheduled_job('cron', hour ='*',)
+async def clock():
+    now = datetime.now(pytz.timezone('Asia/Shanghai'))
+    if now.hour !=5 and now.hour !=4:
+        return
+    dai = DAICounter()
+    bot = nonebot.get_bot()
+    mlist = await bot.get_group_list()
+    d = {}
+    for m in mlist:
+        d[m['group_id']] = m['group_id']
+    value_list = list(d.values())
+    for e in range(len(value_list)):
+        gid = int(value_list[e])
+        server = 0
+        try:
+            server = str(await get_group_sv(gid))
+        except:
+            server = "cn" #获取失败时，转而认定为国服
+        if server == "cn" or "tw":
+            if not now.hour == 5: #每天5点结算
+                return
+        if server == "jp":
+            if not now.hour == 4: #日服每天4点结算
+                return   
+        umlist = dai._get_SH_uid_list(gid)  
+        if umlist !=0:
+            for s in range(len(umlist)):
+                uid = int(umlist[s])
+                dai._delete_SH(gid,uid)
+        umlist = dai._get_GS_uid_list(gid)
+        if umlist !=0:
+            for s in range(len(umlist)):
+                uid = int(umlist[s])
+                dai._delete_GS(gid,uid)
+        umlist = dai._get_DD_uid_list(gid)
+        if umlist !=0:
+            for s in range(len(umlist)):
+                uid = int(umlist[s])
+                dai._delete_DAIDAO_owner(gid,uid)
+        umlist = dai._get_ZZ_uid_list(gid)
+        if umlist !=0:
+            for s in range(len(umlist)):
+                uid = int(umlist[s])
+                dai._delete_ZZ_Suo(gid,uid)
