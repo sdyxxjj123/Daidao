@@ -16,14 +16,18 @@ import copy
 import json
 import nonebot
 from nonebot import on_command, on_request
-from hoshino import sucmd
-from nonebot import get_bot
+from hoshino import sucmd,config,get_bot
 from hoshino.typing import NoticeSession
+from multiprocessing import Pool
+import requests
+import os
+
 
 sv = Service('daidao', bundle='daidao', help_='''
 '''.strip())
 
 DAIDAO_DB_PATH = os.path.expanduser('~/.hoshino/daidao.db')
+SUPERUSERS = config.SUPERUSERS
 def get_db_path():
     if not (os.path.isfile(os.path.abspath(os.path.join(os.path.dirname(__file__), "../"
                                                         "yobot/yobot/src/client/yobot_data/yobotdata.db"))) or os.access(os.path.abspath(os.path.join(os.path.dirname(__file__), "../"
@@ -58,7 +62,53 @@ if not DB_PATH:
     DB_PATH = ''
     # 例：C:/Hoshino/hoshino/modules/yobot/yobot/src/client/yobot_data/yobotdata.db
     # 注意斜杠方向！！！
-    #  
+    #
+Version = '0.0.3'  
+# 检查客户端版本
+def check_update_run():
+    try:
+        url = 'http://127.0.0.1:5050/version'
+        resp = requests.get(url)
+        resp.encoding = 'UTF-8'
+        if resp.status_code != 200:
+            print('【代刀插件】服务器连接失败')
+            return True
+        if resp.text == Version:
+            print('【代刀插件】插件已是最新版本')
+            return True
+        version_new = resp.text
+        url_log = 'http://127.0.0.1:5050/new/log'
+        resp = requests.get(url_log)
+        resp.encoding = 'UTF-8'
+        print(f"代刀插件有更新\n您本地的版本为{Version}，目前最新的版本为{version_new},更新内容为{resp.text}\n建议您立刻前往更新")
+        return True
+    except Exception as e:
+        print('【版本检测】网络错误')
+        return True
+#定时检查并私聊给管理员
+def check_update():
+    try:
+        url = 'http://127.0.0.1:5050/version'
+        resp = requests.get(url)
+        resp.encoding = 'UTF-8'
+        if resp.status_code != 200:
+            print('【代刀插件】服务器连接失败')
+            return True
+        if resp.text == Version:
+            print('【代刀插件】插件已是最新版本')
+            return True
+        version_new = resp.text
+        url_log = 'http://127.0.0.1:5050/new/log'
+        resp = requests.get(url_log)
+        resp.encoding = 'UTF-8'
+        msg = f"代刀插件有更新：\n您本地的版本为{Version}，目前最新的版本为{version_new},更新内容为{resp.text}\n建议您立刻前往更新"
+        return msg
+    except Exception as e:
+        print('【版本检测】网络错误')
+        return True
+
+
+check_update_run()
 async def get_user_card(bot, group_id, user_id):
     mlist = await bot.get_group_member_list(group_id=group_id)
     for m in mlist:
@@ -248,12 +298,10 @@ class DAICounter:
             self._connect().execute('''CREATE TABLE IF NOT EXISTS BCD
                           (GID             INT    NOT NULL,
                            UID           INT    NOT NULL,
-                           ZHOU           INT    NOT NULL,
-                           HAO         INT    NOT NULL,
-                           NUM         INT    NOT NULL,
+                           DATA           NTEXT    NOT NULL,
                            PRIMARY KEY(GID, UID));''')
         except:
-            raise Exception('创建被代刀表发生错误')
+            raise Exception('创建补偿刀表发生错误')
 
     def _get_Weidao_owner(self, gid, uid):
         try:
@@ -262,33 +310,25 @@ class DAICounter:
         except:
             raise Exception('查找代刀归属发生错误')
     
-    def _get_Weidao_ZHOU(self, gid, uid):
-        try:
-            r = self._connect().execute("SELECT ZHOU FROM BCD WHERE GID=? AND UID=?", (gid, uid)).fetchone()
-            return 0 if r is None else r[0]
-        except:
-            raise Exception('查找代刀归属发生错误')
-    
-    def _get_Weidao_HAO(self, gid, uid):
-        try:
-            r = self._connect().execute("SELECT HAO FROM BCD WHERE GID=? AND UID=?", (gid, uid)).fetchone()
-            return 0 if r is None else r[0]
-        except:
-            raise Exception('查找代刀归属发生错误')
-
-    def _set_Weidao_owner(self, gid, uid, zhou, hao, num):
+    def _set_BC_owner(self, gid, uid, data):
         with self._connect() as conn:
             conn.execute(
-                "INSERT OR REPLACE INTO BCD (GID, UID, ZHOU, HAO ,NUM) VALUES (?, ?, ?, ?, ?)",
-                (gid, uid, zhou, hao ,num),
+                "INSERT OR REPLACE INTO BCD (GID, UID, DATA) VALUES (?, ?, ?)",
+                (gid, uid, data),
             )
-
-    def _delete_Weidao_owner(self, gid, uid):
+    def _get_BC(self, gid, uid):
+        try:
+            r = self._connect().execute("SELECT DATA FROM BCD WHERE GID=? AND UID=?", (gid, uid)).fetchone()
+            return 0 if r is None else r[0]
+        except:
+            raise Exception('查找助战归属发生错误')
+    #移除补偿刀
+    def _delete_BC(self, gid, uid):
         with self._connect() as conn:
             conn.execute(
-                "DELETE FROM BCD  WHERE GID=? AND UID=?",
+                "DELETE FROM BCD WHERE GID=? AND UID=?",
                 (gid, uid),
-            )
+            )    
 
     def _get_uid_list(self, gid):
         try:
@@ -296,12 +336,15 @@ class DAICounter:
             return [u[0] for u in r] if r else {}
         except:
             raise Exception('查找uid表发生错误')
+
     def _get_BC_list(self, gid):
         try:
             r = self._connect().execute("SELECT DISTINCT(UID) FROM BCD WHERE GID=? ", (gid,)).fetchall()
             return [u[0] for u in r] if r else {}
         except:
             raise Exception('查找uid表发生错误')
+    
+
 
 #助战部分
     def _create_ZZ(self):
@@ -457,6 +500,7 @@ class DAICounter:
         except:
             raise Exception('查找uid表发生错误')
 
+
 @sv.on_prefix(('代刀中','正在代刀','代刀'))
 async def kakin(bot, ev: CQEvent):
     dai = DAICounter()
@@ -495,7 +539,8 @@ async def kakin(bot, ev: CQEvent):
             await bot.send(ev, f"{user_card}开始代刀！已私聊通知{count}位用户！{fail}位用户通知失败！")
         else:
             await bot.send(ev, f"{user_card}开始代刀！已私聊通知{count}位用户！")
-
+    
+    
 @sv.on_prefix('报刀')
 async def baodao(bot, ev: CQEvent):
     dai = DAICounter()
@@ -505,7 +550,6 @@ async def baodao(bot, ev: CQEvent):
         if m.type == 'at' and m.data['qq'] != 'all':
             uid = int(m.data['qq'])
             dai._delete_DAIDAO_owner(gid,uid)
-            dai._delete_Weidao_owner(gid,uid)
             dai._delete_ZZ_Suo(gid,uid)
             dai._delete_GS(gid,uid)
             dai._delete_SH(gid,uid)
@@ -584,33 +628,15 @@ async def weidao(bot, ev: CQEvent):
             user_card = await get_user_card(bot, ev.group_id, ev.user_id)
             dai._delete_DAIDAO_owner(gid,uid)
             dai._delete_ZZ_Suo(gid,uid)
-            print 
-            if dai._get_Weidao_owner(gid,uid) != 0:
-                dai._delete_Weidao_owner(gid,uid)
-                kill = 1
-            else:
-                Zhou = await get_boss_Zhou(gid)
-                Hao = await get_boss_Hao(gid)
-                dai._set_Weidao_owner(gid,uid,Zhou,Hao,1)#这一段用来判断尾余刀
             num += 1
             try:
-                if kill == 1:
-                    await bot.send_private_msg(user_id=int(uid), message=f'您好~代刀手{user_card}({ev.user_id})已经为您代刀完毕!(您是尾余刀，请关注群消息)')
-                    await bot.send(ev, f"{user_card}代刀结束！已私聊通知该用户！（尾余刀不记录)！")
-                else:
-                    await bot.send_private_msg(user_id=int(uid), message=f'您好~代刀手{user_card}({ev.user_id})已经为您代刀完毕!(您是尾刀，请关注群消息)')
-                    await bot.send(ev, f"{user_card}代刀结束！已私聊通知该用户！且已记录补偿刀！")
+                await bot.send_private_msg(user_id=int(uid), message=f'您好~代刀手{user_card}({ev.user_id})已经为您代刀完毕!(您是尾刀，请关注群消息)')
+                await bot.send(ev, f"{user_card}代刀结束！已私聊通知该用户！且已记录补偿刀！")
             except:
                 await bot.send(ev, '发送私聊代刀消息时发生错误，该用户可能没有私聊过机器人（但代刀正常记录）')
     if num == 0:
         uid = ev.user_id
         dai._delete_DAIDAO_owner(gid,uid)
-        if dai._get_Weidao_owner(gid,uid) != 0:
-            dai._delete_Weidao_owner(gid,uid)
-        else:
-            Zhou = await get_boss_Zhou(gid)
-            Hao = await get_boss_Hao(gid)
-            dai._set_Weidao_owner(gid,uid,Zhou,Hao,1)#这一段用来判断尾余刀
       
 @sv.on_rex(r'^(?:SL|sl) *([\?？])?')
 async def SLL(bot, ev: CQEvent):
@@ -726,27 +752,53 @@ async def zt(bot, ev: CQEvent):
         dai._set_SH_owner(gid,uid,id,num)
         await bot.finish(ev, f'已记录{user_card}的伤害为{num}！')
 
-
-@sv.on_rex(f'^(.*)锁助战(.*)$')
-async def ZZS(bot, ev: CQEvent):
+@sv.on_rex(f'^记录补偿刀(:|：)(.*)$')
+async def zt(bot, ev: CQEvent):
     gid = ev.group_id
+    id = ev.user_id
+    dai = DAICounter()
     match = ev['match']
     try:
         uid = int(ev.message[1].data['qq'])
     except:
-        await bot.finish(ev, '参数格式错误')
-    name = str(match.group(2))
+        uid = ev.user_id
+    user_card = await get_user_card(bot, ev.group_id, uid)
+    num = str(match.group(2))
+    dai._set_BC_owner(gid,uid,num)
+    await bot.finish(ev, f'已记录{user_card}补偿刀{num}！')
+
+
+@sv.on_rex(f'^(.*)锁助战(:|：)(.*)$')
+async def ZZS(bot, ev: CQEvent):
+    gid = ev.group_id
+    match = ev['match']
+    num = 0
+    try:
+        uid = int(ev.message[1].data['qq'])
+    except:
+        uid = ev.user_id
+    name = str(match.group(3))
     dai = DAICounter()
     user_card = await get_user_card(bot, ev.group_id, uid)
     for m in ev.message:
         if m.type == 'at' and m.data['qq'] != 'all':
             uid = int(m.data['qq'])
             owner = dai._get_ZZ_Suo(gid,uid)
+            num += 1
             if owner == 0:
                 dai._set_ZZ_owner(gid,uid,name)
                 await bot.send(ev, f"已记录{user_card}被锁定助战{name}")
             else:
                 await bot.finish(ev, f'{user_card}已经有被登记的锁助战信息了！')
+    if not num:
+        uid = ev.user_id
+        owner = dai._get_ZZ_Suo(gid,uid)
+        if owner == 0:
+            dai._set_ZZ_owner(gid,uid,name)
+            await bot.send(ev, f"已记录{user_card}被锁定助战{name}")
+        else:
+            await bot.finish(ev, f'{user_card}已经有被登记的锁助战信息了！')
+    
                 
 async def get_user_card_dict(bot, group_id):
     mlist = await bot.get_group_member_list(group_id=group_id)
@@ -769,6 +821,7 @@ async def XXZT(bot, ev: CQEvent):
         score_dict2 = {}
         dai = DAICounter()
         gid = ev.group_id
+        now = datetime.now(pytz.timezone('Asia/Shanghai'))
         for uid in user_card_dict.keys():
             if uid != ev.self_id:
                 owner = dai._get_Daidao_owner(gid,uid)
@@ -820,7 +873,10 @@ async def XXZT(bot, ev: CQEvent):
         msg3 = '当前暂停的有:\n'
         for i in range(len(group_ranking)):
             if group_ranking[i][1] != 0:
-                msg3 += f'{i+1}. {group_ranking[i][0]} 伤害：{group_ranking[i][1][0]} 刀手：{group_ranking[i][1][1]}\n'
+                if group_ranking[i][0] != group_ranking[i][1][1]:
+                    msg3 += f'{i+1}. {group_ranking[i][0]} 伤害：{group_ranking[i][1][0]} 刀手：{group_ranking[i][1][1]}\n'
+                else:
+                    msg3 += f'{i+1}. {group_ranking[i][0]} 伤害：{group_ranking[i][1][0]}\n'
         if msg3 == '当前暂停的有:\n':
             msg3 = '当前没有人成刀暂停\n'
 
@@ -842,7 +898,10 @@ async def XXZT(bot, ev: CQEvent):
         msg4 = '当前挂树的有:\n'
         for i in range(len(group_ranking)):
             if group_ranking[i][1] != 0:
-                msg4 += f'{i+1}. {group_ranking[i][0]} 挂树开始时间：{group_ranking[i][1][0]} 时{group_ranking[i][1][1]} 分 刀手：{group_ranking[i][1][2]}\n'
+                if group_ranking[i][1][2] != group_ranking[i][0]:
+                    msg4 += f'{i+1}. {group_ranking[i][0]} 挂树开始时间：{group_ranking[i][1][0]} 时{group_ranking[i][1][1]} 分 刀手：{group_ranking[i][1][2]},已挂树{60*(now.hour-int(group_ranking[i][1][0]))+now.minute-int(group_ranking[i][1][1])}分钟\n'
+                else:
+                    msg4 += f'{i+1}. {group_ranking[i][0]} 挂树开始时间：{group_ranking[i][1][0]} 时{group_ranking[i][1][1]} 分,已挂树{60*(now.hour-int(group_ranking[i][1][0]))+now.minute-int(group_ranking[i][1][1])}分钟\n'
         if msg4 == '当前挂树的有:\n':
             msg4 = '当前没有人挂树\n'
         server = str(await get_group_sv(gid))
@@ -854,6 +913,7 @@ async def XXZT(bot, ev: CQEvent):
 
 @sv.on_fullmatch('查树')
 async def CHASHU(bot, ev: CQEvent):
+        now = datetime.now(pytz.timezone('Asia/Shanghai'))
         user_card_dict = await get_user_card_dict(bot, ev.group_id)
         score_dict = {}
         score_dict2 = {}
@@ -874,7 +934,10 @@ async def CHASHU(bot, ev: CQEvent):
         msg = '当前挂树的有:\n'
         for i in range(len(group_ranking)):
             if group_ranking[i][1] != 0:
-                msg += f'{i+1}. {group_ranking[i][0]} 挂树开始时间：{group_ranking[i][1][0]} 时{group_ranking[i][1][1]} 分 刀手：{group_ranking[i][1][2]}\n'
+                if group_ranking[i][1][2] != group_ranking[i][0]:
+                    msg += f'{i+1}. {group_ranking[i][0]} 挂树开始时间：{group_ranking[i][1][0]} 时{group_ranking[i][1][1]} 分 刀手：{group_ranking[i][1][2]},已挂树{60*(now.hour-int(group_ranking[i][1][0]))+now.minute-int(group_ranking[i][1][1])}分钟\n'
+                else:
+                    msg += f'{i+1}. {group_ranking[i][0]} 挂树开始时间：{group_ranking[i][1][0]} 时{group_ranking[i][1][1]} 分,已挂树{60*(now.hour-int(group_ranking[i][1][0]))+now.minute-int(group_ranking[i][1][1])}分钟\n'
         if msg == '当前挂树的有:\n':
             msg = '当前没有人挂树\n'
         await bot.send(ev, msg.strip())
@@ -905,7 +968,7 @@ async def DDB(bot, ev: CQEvent):
             msg = '当前没有人正在被代刀'
         await bot.send(ev, msg.strip())
     
-@sv.on_fullmatch(('锁助战列表', '锁助战列表的有谁'))
+@sv.on_fullmatch(('锁助战列表', '锁助战的有谁'))
 async def ZZ_SS(bot, ev: CQEvent):
         user_card_dict = await get_user_card_dict(bot, ev.group_id)
         score_dict = {}
@@ -939,20 +1002,18 @@ async def BCB(bot, ev: CQEvent):
         gid = ev.group_id
         for uid in user_card_dict.keys():
             if uid != ev.self_id:
-                owner = dai._get_Weidao_owner(gid,uid)
+                owner = dai._get_BC(gid,uid)
                 if owner !=0:
-                    Zhou = dai._get_Weidao_ZHOU(gid,uid)
-                    Hao = dai._get_Weidao_HAO(gid,uid)
-                    score_dict[user_card_dict[uid]] = [Zhou,Hao]
+                    score_dict[user_card_dict[uid]] = [1,owner]
                 else:
                     continue
         group_ranking = sorted(score_dict.items(),key = lambda x:x[1],reverse = True)
         msg = '当前记录的补偿刀有:\n'
         for i in range(len(group_ranking)):
             if group_ranking[i][1] != 0:
-                msg += f'{i+1}. {group_ranking[i][0]} 在{group_ranking[i][1][0]}周目{group_ranking[i][1][1]}号BOSS收尾\n'
+                msg += f'{i+1}. {group_ranking[i][0]} 记录了：{group_ranking[i][1][1]}\n'
         if msg == '当前记录的补偿刀有:\n':
-            msg = '当前没有补偿刀'
+            msg = '当前没有记录的补偿刀'
         await bot.send(ev, msg.strip())
 
 @sv.on_fullmatch('清空代刀数据')
@@ -976,7 +1037,7 @@ async def Reset(bot, ev: CQEvent):
     umlist = dai._get_BC_list(gid)
     for s in range(len(umlist)):
         uid = int(umlist[s])   
-        dai._delete_Weidao_owner(gid,uid)
+        dai._delete_BC(gid,uid)
     await bot.finish(ev, '已清空目前记录的补偿刀数据！')
 
 @sv.scheduled_job('cron', hour ='*',)
@@ -1024,3 +1085,18 @@ async def clock():
             for s in range(len(umlist)):
                 uid = int(umlist[s])
                 dai._delete_ZZ_Suo(gid,uid)
+        umlist = dai._get_BC_list(gid)
+        if umlist !=0:
+            for s in range(len(umlist)):
+                uid = int(umlist[s])   
+                dai._delete_BC(gid,uid)
+
+@sv.scheduled_job('cron', hour ='*',)
+async def checkupdate():
+    now = datetime.now(pytz.timezone('Asia/Shanghai'))
+    if now.hour !=5:
+        return
+    bot = nonebot.get_bot()
+    log = check_update()
+    if log != True:
+        await bot.send_private_msg(user_id=int(SUPERUSERS[0]), message=log)
