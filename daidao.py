@@ -63,11 +63,11 @@ if not DB_PATH:
     # 例：C:/Hoshino/hoshino/modules/yobot/yobot/src/client/yobot_data/yobotdata.db
     # 注意斜杠方向！！！
     #
-Version = '0.0.3'  
+Version = '0.0.4'  
 # 检查客户端版本
 def check_update_run():
     try:
-        url = 'http://127.0.0.1:5050/version'
+        url = 'http://update.ftcloud.top:5050/version'
         resp = requests.get(url)
         resp.encoding = 'UTF-8'
         if resp.status_code != 200:
@@ -77,13 +77,13 @@ def check_update_run():
             print('【代刀插件】插件已是最新版本')
             return True
         version_new = resp.text
-        url_log = 'http://127.0.0.1:5050/new/log'
+        url_log = 'http://update.ftcloud.top:5050/new/log'
         resp = requests.get(url_log)
         resp.encoding = 'UTF-8'
-        print(f"代刀插件有更新\n您本地的版本为{Version}，目前最新的版本为{version_new},更新内容为{resp.text}\n建议您立刻前往更新")
+        print(f"代刀插件有更新\n您本地的版本为{Version}，目前最新的版本为{version_new},更新内容为{resp.text}\n建议您立刻前往https://github.com/sdyxxjj123/Daidao/更新")
         return True
     except Exception as e:
-        print('【版本检测】网络错误')
+        print('【代刀插件】网络错误')
         return True
 #定时检查并私聊给管理员
 def check_update():
@@ -101,10 +101,10 @@ def check_update():
         url_log = 'http://127.0.0.1:5050/new/log'
         resp = requests.get(url_log)
         resp.encoding = 'UTF-8'
-        msg = f"代刀插件有更新：\n您本地的版本为{Version}，目前最新的版本为{version_new},更新内容为{resp.text}\n建议您立刻前往更新"
+        msg = f"代刀插件有更新：\n您本地的版本为{Version}，目前最新的版本为{version_new},更新内容为{resp.text}\n建议您立刻前往https://github.com/sdyxxjj123/Daidao/更新"
         return msg
     except Exception as e:
-        print('【版本检测】网络错误')
+        print('【代刀插件】网络错误')
         return True
 
 
