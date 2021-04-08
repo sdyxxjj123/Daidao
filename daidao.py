@@ -706,7 +706,7 @@ async def guashu_del(bot, ev: CQEvent):
                 await bot.send(ev, f'{user_card}没有挂树！')
             count += 1   
     if count:
-        await bot.send(ev, f"{user_card}在代刀中挂树！已通知{count}位用户！")
+        await bot.send(ev, f"{user_card}取消了{count}位用户的挂树状态，已私聊通知！")
     else:
         uid = ev.user_id
         if dai._get_GS_id(gid,uid) !=0:
