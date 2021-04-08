@@ -88,7 +88,7 @@ def check_update_run():
 #定时检查并私聊给管理员
 def check_update():
     try:
-        url = 'http://127.0.0.1:5050/version'
+        url = 'http://update.ftcloud.top:5050/version'
         resp = requests.get(url)
         resp.encoding = 'UTF-8'
         if resp.status_code != 200:
@@ -98,7 +98,7 @@ def check_update():
             print('【代刀插件】插件已是最新版本')
             return True
         version_new = resp.text
-        url_log = 'http://127.0.0.1:5050/new/log'
+        url_log = 'http://update.ftcloud.top:5050/new/log'
         resp = requests.get(url_log)
         resp.encoding = 'UTF-8'
         msg = f"代刀插件有更新：\n您本地的版本为{Version}，目前最新的版本为{version_new},更新内容为{resp.text}\n建议您立刻前往https://github.com/sdyxxjj123/Daidao/更新"
@@ -701,12 +701,12 @@ async def guashu_del(bot, ev: CQEvent):
             user_card2 = await get_user_card(bot, ev.group_id, uid)
             if dai._get_GS_id(gid,uid) !=0:
                 dai._delete_GS(gid,uid)
-                await bot.send(ev, f'{user_card2}已取消{user_card}的挂树状态！')
+                await bot.send(ev, f'{user_card}已取消{user_card2}的挂树状态！')
             else:
                 await bot.send(ev, f'{user_card}没有挂树！')
             count += 1   
     if count:
-        await bot.send(ev, f"{user_card}取消了{count}位用户的挂树状态，已私聊通知！")
+        return
     else:
         uid = ev.user_id
         if dai._get_GS_id(gid,uid) !=0:
