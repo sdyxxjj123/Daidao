@@ -63,7 +63,7 @@ if not DB_PATH:
     # 例：C:/Hoshino/hoshino/modules/yobot/yobot/src/client/yobot_data/yobotdata.db
     # 注意斜杠方向！！！
     #
-Version = '0.0.4'  
+Version = '0.0.5'  
 # 检查客户端版本
 def check_update_run():
     try:
@@ -613,7 +613,8 @@ async def weidao(bot, ev: CQEvent):
             uid = int(umlist[s])
             dai._delete_SH(gid,uid)
             msgSH += f"[CQ:at,qq={uid}]"
-        await bot.send(ev, msgSH)
+        if msgSH != "暂停的下来吧:\n":
+            await bot.send(ev, msgSH)
     umlist = dai._get_GS_uid_list(gid)
     if umlist !=0:
         msgGS = "挂树的下来吧:\n"
@@ -621,7 +622,8 @@ async def weidao(bot, ev: CQEvent):
             uid = int(umlist[s])
             dai._delete_GS(gid,uid)
             msgGS += f"[CQ:at,qq={uid}]"
-        await bot.send(ev, msgGS) 
+        if msgGS != "挂树的下来吧:\n":
+            await bot.send(ev, msgGS) 
     for m in ev.message:
         if m.type == 'at' and m.data['qq'] != 'all':
             uid = int(m.data['qq'])
@@ -966,6 +968,35 @@ async def DDB(bot, ev: CQEvent):
                 msg += f'{i+1}. {group_ranking[i][0]} 在{group_ranking[i][1][0]}周目{group_ranking[i][1][1]}号BOSS被{group_ranking[i][1][2]}发起代刀\n'
         if msg == '当前正在被代刀的有:\n':
             msg = '当前没有人正在被代刀'
+        await bot.send(ev, msg.strip())
+
+@sv.on_fullmatch('暂停列表')
+async def ZZB(bot, ev: CQEvent):
+        user_card_dict = await get_user_card_dict(bot, ev.group_id)
+        score_dict = {}
+        score_dict2 = {}
+        dai = DAICounter()
+        gid = ev.group_id
+        for uid in user_card_dict.keys():
+            if uid != ev.self_id:
+                owner = dai._get_SHB_SH(gid,uid)
+                if owner !=0:
+                    SH = dai._get_SHB_SH(gid,uid)
+                    id = dai._get_SHB_ID(gid,uid)
+                    user = await get_user_card(bot, ev.group_id, id)
+                    score_dict[user_card_dict[uid]] = [SH,user]
+                else:
+                    continue
+        group_ranking = sorted(score_dict.items(),key = lambda x:x[1],reverse = True)
+        msg = '当前暂停的有:\n'
+        for i in range(len(group_ranking)):
+            if group_ranking[i][1] != 0:
+                if group_ranking[i][0] != group_ranking[i][1][1]:
+                    msg += f'{i+1}. {group_ranking[i][0]} 伤害：{group_ranking[i][1][0]} 刀手：{group_ranking[i][1][1]}\n'
+                else:
+                    msg += f'{i+1}. {group_ranking[i][0]} 伤害：{group_ranking[i][1][0]}\n'
+        if msg == '当前暂停的有:\n':
+            msg = '当前没有人成刀暂停\n'
         await bot.send(ev, msg.strip())
     
 @sv.on_fullmatch(('锁助战列表', '锁助战的有谁'))
