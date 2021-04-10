@@ -28,6 +28,7 @@ sv = Service('daidao', bundle='daidao', help_='''
 
 DAIDAO_DB_PATH = os.path.expanduser('~/.hoshino/daidao.db')
 SUPERUSERS = config.SUPERUSERS
+GroupID_ON = False #当GO版本为0.94fix4以上时，允许从群内发起私聊（即使用管理员身份强制私聊，不需要对方主动私聊过），如果低于该版本请不要开启
 def get_db_path():
     if not (os.path.isfile(os.path.abspath(os.path.join(os.path.dirname(__file__), "../"
                                                         "yobot/yobot/src/client/yobot_data/yobotdata.db"))) or os.access(os.path.abspath(os.path.join(os.path.dirname(__file__), "../"
@@ -63,7 +64,7 @@ if not DB_PATH:
     # 例：C:/Hoshino/hoshino/modules/yobot/yobot/src/client/yobot_data/yobotdata.db
     # 注意斜杠方向！！！
     #
-Version = '0.0.5'  
+Version = '0.0.6'  
 # 检查客户端版本
 def check_update_run():
     try:
@@ -523,10 +524,13 @@ async def kakin(bot, ev: CQEvent):
                         Zhou +=1
                 dai._set_DAIDAO_owner(gid,ev.user_id,uid,Zhou,Hao)
                 try:
-                    await bot.send_private_msg(user_id=int(uid), message=f'您好~代刀手{user_card}({ev.user_id})正在为您代刀，请勿登录！本次代刀发起是在{Zhou}周目{Hao}号BOSS！')
+                    if GroupID_ON == True:
+                        await bot.send_private_msg(user_id=int(uid),group_id=int(gid),message=f'您好~代刀手{user_card}({ev.user_id})正在为您代刀，请勿登录！本次代刀发起是在{Zhou}周目{Hao}号BOSS！')
+                    else:
+                        await bot.send_private_msg(user_id=int(uid), message=f'您好~代刀手{user_card}({ev.user_id})正在为您代刀，请勿登录！本次代刀发起是在{Zhou}周目{Hao}号BOSS！')
                     count += 1
                 except:
-                    await bot.send(ev, '发送私聊代刀消息时发生错误，该用户可能没有私聊过机器人（但代刀正常记录）')
+                    await bot.send(ev, '发送私聊代刀消息时发生错误，该用户可能没有私聊过机器人（但代刀正常记录，若机器人是管理员，则消息已正常发出）')
                     fail += 1
             else:
                 zhou = dai._get_Daidao_ZHOU(gid,uid)
@@ -556,10 +560,13 @@ async def baodao(bot, ev: CQEvent):
             user_card = await get_user_card(bot, ev.group_id, ev.user_id)
             num += 1
             try:
-                await bot.send_private_msg(user_id=int(uid), message=f'您好~代刀手{user_card}({ev.user_id})已经为您代刀完毕!')
+                if GroupID_ON == True:
+                    await bot.send_private_msg(user_id=int(uid),group_id=int(gid),message=f'您好~代刀手{user_card}({ev.user_id})已经为您代刀完毕!')
+                else:
+                    await bot.send_private_msg(user_id=int(uid),message=f'您好~代刀手{user_card}({ev.user_id})已经为您代刀完毕!')
                 await bot.send(ev, f"{user_card}代刀结束！已私聊通知该用户！")
             except:
-                await bot.send(ev, '发送私聊代刀消息时发生错误，该用户可能没有私聊过机器人（但代刀正常记录）')
+                await bot.send(ev, '发送私聊代刀消息时发生错误，该用户可能没有私聊过机器人（但代刀正常记录，若机器人是管理员，则消息已正常发出）')
     if num == 0:
         uid = ev.user_id
         dai._delete_DAIDAO_owner(gid,uid)
@@ -632,10 +639,13 @@ async def weidao(bot, ev: CQEvent):
             dai._delete_ZZ_Suo(gid,uid)
             num += 1
             try:
-                await bot.send_private_msg(user_id=int(uid), message=f'您好~代刀手{user_card}({ev.user_id})已经为您代刀完毕!(您是尾刀，请关注群消息)')
+                if GroupID_ON == True:
+                    await bot.send_private_msg(user_id=int(uid), group_id=int(gid),message=f'您好~代刀手{user_card}({ev.user_id})已经为您代刀完毕!(您是尾刀，请关注群消息)')
+                else:
+                    await bot.send_private_msg(user_id=int(uid), message=f'您好~代刀手{user_card}({ev.user_id})已经为您代刀完毕!(您是尾刀，请关注群消息)')
                 await bot.send(ev, f"{user_card}代刀结束！已私聊通知该用户！且已记录补偿刀！")
             except:
-                await bot.send(ev, '发送私聊代刀消息时发生错误，该用户可能没有私聊过机器人（但代刀正常记录）')
+                await bot.send(ev, '发送私聊代刀消息时发生错误，该用户可能没有私聊过机器人（但代刀正常记录，若机器人是管理员，则消息已正常发出）')
     if num == 0:
         uid = ev.user_id
         dai._delete_DAIDAO_owner(gid,uid)
@@ -655,9 +665,12 @@ async def SLL(bot, ev: CQEvent):
             uid = int(m.data['qq'])
             user_card = await get_user_card(bot, ev.group_id, ev.user_id)
             try:
-                await bot.send_private_msg(user_id=int(uid), message=f'您好~代刀手{user_card}({ev.user_id})使用了您的SL!请关注群消息！')
+                if GroupID_ON == True:
+                    await bot.send_private_msg(user_id=int(uid),group_id=int(gid),message=f'您好~代刀手{user_card}({ev.user_id})使用了您的SL!请关注群消息！')
+                else:
+                    await bot.send_private_msg(user_id=int(uid), message=f'您好~代刀手{user_card}({ev.user_id})使用了您的SL!请关注群消息！')
             except:
-                await bot.send(ev, '发送私聊代刀消息时发生错误，该用户可能没有私聊过机器人（但代刀正常记录）')
+                await bot.send(ev, '发送私聊代刀消息时发生错误，该用户可能没有私聊过机器人（但代刀正常记录，若机器人是管理员，则消息已正常发出）')
             count += 1
     if count:
         await bot.send(ev, f"{user_card}在代刀中使用了SL！已通知{count}位用户！")
@@ -677,9 +690,12 @@ async def guashu(bot, ev: CQEvent):
             user_card = await get_user_card(bot, ev.group_id, ev.user_id)
             dai._set_GS_owner(gid,uid,Hour,Min,id)
             try:
-                await bot.send_private_msg(user_id=int(uid), message=f'您好~代刀手{user_card}({ev.user_id})在您的账号上代刀时挂树!请暂时不要登陆并关注群消息！')
+                if GroupID_ON == True:
+                    await bot.send_private_msg(user_id=int(uid),group_id=int(gid),message=f'您好~代刀手{user_card}({ev.user_id})在您的账号上代刀时挂树!请暂时不要登陆并关注群消息！')
+                else:
+                    await bot.send_private_msg(user_id=int(uid), message=f'您好~代刀手{user_card}({ev.user_id})在您的账号上代刀时挂树!请暂时不要登陆并关注群消息！')
             except:
-                await bot.send(ev, '发送私聊代刀消息时发生错误，该用户可能没有私聊过机器人（但代刀正常记录）')
+                await bot.send(ev, '发送私聊代刀消息时发生错误，该用户可能没有私聊过机器人（但代刀正常记录，若机器人是管理员，则消息已正常发出）')
             count += 1
     if count:
         await bot.send(ev, f"{user_card}在代刀中挂树！已通知{count}位用户！")
@@ -728,7 +744,10 @@ async def quxiao(bot, ev: CQEvent):
                 dai._delete_DAIDAO_owner(gid,uid)
                 user_card2 = await get_user_card(bot, ev.group_id, uid)
                 try:
-                    await bot.send_private_msg(user_id=int(uid), message=f'您好~代刀手{user_card}({ev.user_id})取消了代刀！')
+                    if GroupID_ON == True:
+                        await bot.send_private_msg(user_id=int(uid),group_id=int(gid),message=f'您好~代刀手{user_card}({ev.user_id})取消了代刀！')
+                    else:
+                        await bot.send_private_msg(user_id=int(uid), message=f'您好~代刀手{user_card}({ev.user_id})取消了代刀！')
                     await bot.send(ev, f"{user_card}取消了为{user_card2}的代刀！已私聊通知该用户！")
                 except:
                     await bot.finish(ev, f'发送私聊取消代刀消息时发生错误，{user_card2}可能没有私聊过机器人（但取消代刀正常记录）')
