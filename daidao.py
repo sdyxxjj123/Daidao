@@ -606,7 +606,7 @@ async def search_kakin(bot, ev: CQEvent):
             user_card2 = await get_user_card(bot, ev.group_id, uid)
             await bot.send(ev, f'您的账号在{zhou}周目{hao}号BOSS由{user_card}发起了代刀，请小心顶号！')
         
-@sv.on_rex(r'^尾刀 ?\d+ ?$')
+@sv.on_rex(r'^尾刀 ?$')
 async def weidao(bot, ev: CQEvent):
     dai = DAICounter()
     gid = ev.group_id
