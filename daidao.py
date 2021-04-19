@@ -20,7 +20,6 @@ from hoshino import sucmd,config,get_bot
 from hoshino.typing import NoticeSession
 from multiprocessing import Pool
 import requests
-import os
 
 
 sv = Service('daidao', bundle='daidao', help_='''
@@ -502,7 +501,7 @@ class DAICounter:
             raise Exception('查找uid表发生错误')
 
 
-@sv.on_prefix(('代刀中','正在代刀','代刀'))
+@sv.on_rex(r'(代刀中?|正在代刀) ?$')
 async def kakin(bot, ev: CQEvent):
     dai = DAICounter()
     gid = ev.group_id
@@ -545,7 +544,7 @@ async def kakin(bot, ev: CQEvent):
             await bot.send(ev, f"{user_card}开始代刀！已私聊通知{count}位用户！")
     
     
-@sv.on_prefix('报刀')
+@sv.on_rex(r'^报刀 ?\d+ ?$')
 async def baodao(bot, ev: CQEvent):
     dai = DAICounter()
     gid = ev.group_id
@@ -574,8 +573,8 @@ async def baodao(bot, ev: CQEvent):
         dai._delete_SH(gid,uid)
         dai._delete_ZZ_Suo(gid,uid)
         
-@sv.on_prefix('查询代刀')
-async def kakin(bot, ev: CQEvent):
+@sv.on_rex(r'^查询代刀 ?$')
+async def search_kakin(bot, ev: CQEvent):
         dai = DAICounter()
         gid = ev.group_id
         num = 0
@@ -607,12 +606,12 @@ async def kakin(bot, ev: CQEvent):
             user_card2 = await get_user_card(bot, ev.group_id, uid)
             await bot.send(ev, f'您的账号在{zhou}周目{hao}号BOSS由{user_card}发起了代刀，请小心顶号！')
         
-@sv.on_prefix('尾刀')
+@sv.on_rex(r'^尾刀 ?\d+ ?$')
 async def weidao(bot, ev: CQEvent):
     dai = DAICounter()
     gid = ev.group_id
     num = 0
-    kill = 0
+    #kill = 0
     umlist = dai._get_SH_uid_list(gid)
     if umlist !=0:
         msgSH = "暂停的下来吧:\n"
@@ -653,11 +652,8 @@ async def weidao(bot, ev: CQEvent):
 @sv.on_rex(r'^(?:SL|sl) *([\?？])?')
 async def SLL(bot, ev: CQEvent):
     match = ev['match']
-    a = match.group(1) == '？'
-    b = match.group(1) == '?'
-    if a:
-        return
-    elif b:
+    gid = ev.group_id
+    if bool(match.group(1)):
         return
     count = 0
     for m in ev.message:
@@ -675,7 +671,7 @@ async def SLL(bot, ev: CQEvent):
     if count:
         await bot.send(ev, f"{user_card}在代刀中使用了SL！已通知{count}位用户！")
         
-@sv.on_prefix('挂树')
+@sv.on_rex(r'^挂树 ?$|^挂树[：:](.*)') #这个地方match.group(1)提取留言
 async def guashu(bot, ev: CQEvent):
     count = 0
     now = datetime.now(pytz.timezone('Asia/Shanghai'))
@@ -704,10 +700,10 @@ async def guashu(bot, ev: CQEvent):
         dai._set_GS_owner(gid,uid,Hour,Min,id)
         await bot.send(ev, '已记录挂树')
 
-@sv.on_prefix('取消挂树')
+@sv.on_rex(r'^取消挂树 ?$')
 async def guashu_del(bot, ev: CQEvent):
     count = 0
-    id = ev.user_id
+    #id = ev.user_id
     dai = DAICounter()
     gid = ev.group_id
     for m in ev.message:
@@ -731,7 +727,7 @@ async def guashu_del(bot, ev: CQEvent):
         else:
             await bot.send(ev, f'您没有挂树！')
 
-@sv.on_prefix(('取消代刀','结束代刀'))
+@sv.on_rex(r'^(:?取消|结束)代刀 ?$')
 async def quxiao(bot, ev: CQEvent):
     dai = DAICounter()
     gid = ev.group_id
@@ -774,9 +770,9 @@ async def zt(bot, ev: CQEvent):
         await bot.finish(ev, f'已记录{user_card}的伤害为{num}！')
 
 @sv.on_rex(f'^记录补偿刀(:|：)(.*)$')
-async def zt(bot, ev: CQEvent):
+async def jl(bot, ev: CQEvent):
     gid = ev.group_id
-    id = ev.user_id
+    #id = ev.user_id
     dai = DAICounter()
     match = ev['match']
     try:
@@ -829,7 +825,7 @@ async def get_user_card_dict(bot, group_id):
     return d        
 
 async def get_gid_dict(bot, group_id):
-    glist = await bot.get_group_list()
+    mlist = await bot.get_group_list()
     d = {}
     for m in mlist:
         d[m['group_id']] = m['group_id']
@@ -1079,7 +1075,7 @@ async def Reset(bot, ev: CQEvent):
     await bot.finish(ev, '已清空正在代刀的数据！')
 
 @sv.on_fullmatch('清空补偿数据')
-async def Reset(bot, ev: CQEvent):   
+async def reset(bot, ev: CQEvent):   
     if not priv.check_priv(ev, priv.ADMIN):
         await bot.finish(ev, '无权进行该操作！', at_sender=True)
     gid = ev.group_id
