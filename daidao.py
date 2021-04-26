@@ -71,19 +71,19 @@ def check_update_run():
         resp = requests.get(url)
         resp.encoding = 'UTF-8'
         if resp.status_code != 200:
-            print('【代刀插件】服务器连接失败')
+            sv.logger.error('【代刀插件】服务器连接失败')
             return True
         if resp.text == Version:
-            print('【代刀插件】插件已是最新版本')
+            sv.logger.info('【代刀插件】插件已是最新版本')
             return True
         version_new = resp.text
         url_log = 'http://update.ftcloud.top:5050/new/log'
         resp = requests.get(url_log)
         resp.encoding = 'UTF-8'
-        print(f"代刀插件有更新\n您本地的版本为{Version}，目前最新的版本为{version_new},更新内容为{resp.text}\n建议您立刻前往https://github.com/sdyxxjj123/Daidao/更新")
+        sv.logger.info(f"代刀插件有更新\n您本地的版本为{Version}，目前最新的版本为{version_new},更新内容为{resp.text}\n建议您立刻前往https://github.com/sdyxxjj123/Daidao/更新")
         return True
     except Exception as e:
-        print('【代刀插件】网络错误')
+        sv.logger.error('【代刀插件】网络错误')
         return True
 #定时检查并私聊给管理员
 def check_update():
@@ -92,10 +92,10 @@ def check_update():
         resp = requests.get(url)
         resp.encoding = 'UTF-8'
         if resp.status_code != 200:
-            print('【代刀插件】服务器连接失败')
+            sv.logger.error('【代刀插件】服务器连接失败')
             return True
         if resp.text == Version:
-            print('【代刀插件】插件已是最新版本')
+            sv.logger.info('【代刀插件】插件已是最新版本')
             return True
         version_new = resp.text
         url_log = 'http://update.ftcloud.top:5050/new/log'
@@ -104,7 +104,7 @@ def check_update():
         msg = f"代刀插件有更新：\n您本地的版本为{Version}，目前最新的版本为{version_new},更新内容为{resp.text}\n建议您立刻前往https://github.com/sdyxxjj123/Daidao/更新"
         return msg
     except Exception as e:
-        print('【代刀插件】网络错误')
+        sv.logger.error('【代刀插件】网络错误')
         return True
 
 
@@ -195,7 +195,6 @@ class RecordDAO:
         return r2[0]
 
     def set_date(self, date, key):
-        print(date)
         self.exist_check(key)
         key = str(key)
         with self.connect() as conn:
