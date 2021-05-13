@@ -501,7 +501,7 @@ class DAICounter:
             raise Exception('查找uid表发生错误')
 
 
-@sv.on_rex(r'(代刀中?|正在代刀) ?$')
+@sv.on_rex(r'^(代刀中?|正在代刀) ?$')
 async def kakin(bot, ev: CQEvent):
     dai = DAICounter()
     gid = ev.group_id
