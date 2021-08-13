@@ -15,11 +15,19 @@ from hoshino.typing import CQEvent
 import copy
 import json
 import nonebot
-from nonebot import on_command, on_request
+import time
+from nonebot import on_command, on_request,MessageSegment
 from hoshino import sucmd,config,get_bot
 from hoshino.typing import NoticeSession
 from multiprocessing import Pool
 import requests
+#import prettytable as pt
+import imgkit
+from HTMLTable import  HTMLTable
+
+
+
+# tb = pt.PrettyTable( ["City name", "Area", "Population", "Annual Rainfall"])
 
 
 sv = Service('daidao', bundle='daidao', help_='''
@@ -42,6 +50,7 @@ bossData = {
     'hp5': [6000000, 8000000, 10000000, 12000000, 20000000],}
 }
 DAIDAO_DB_PATH = os.path.expanduser('~/.hoshino/daidao.db')
+DAIDAO_jpg_PATH = os.path.expanduser('~/.hoshino/')
 SUPERUSERS = config.SUPERUSERS
 GroupID_ON = False #当GO版本为0.94fix4以上时，允许从群内发起私聊（即使用管理员身份强制私聊，不需要对方主动私聊过），如果低于该版本请不要开启
 def get_db_path():
@@ -1171,15 +1180,58 @@ async def cddqk(bot,ev):
     gid = ev.group_id
     dao = await get_dao(gid)
     dai = await get_dai(gid)
-    newdao = ''
+    # tb = pt.PrettyTable()
+    #  tb.field_names = ["名字", "出刀数", "代刀数", "总出刀"]
+    #  print(tb)
+    # 标题
+    table = HTMLTable(caption='代刀表')
+    # 表头行
+    table.append_header_rows((
+    ("名字", "出刀数", "代刀数", "总出刀"),))
     for qq in dao:
         try:
             name = (await bot.get_group_member_info(group_id=ev.group_id,user_id=qq))['nickname']
         except:
             name = "不在群成员"
         if dao[qq]+dai[qq] != 0:
-            newdao += name + ':' + '出刀'+str(dao[qq]) + '刀 ' + '  代刀' + str(dai[qq]) + '刀' + '   总出刀' + str(dao[qq]+dai[qq]) + '刀\n'
-    await bot.send(ev,str(newdao))
+           table.append_data_rows(((name,str(dao[qq]), str(dai[qq]), str(dao[qq]+dai[qq])),))
+    table.caption.set_style({
+    'font-size': '15px',})
+    table.set_style({
+    'border-collapse': 'collapse',
+    'word-break': 'keep-all',
+    'white-space': 'nowrap',
+    'font-size': '14px',})
+    table.set_cell_style({
+    'width': "250px",
+    'border-color': '#000',
+    'border-width': '1px',
+    'border-style': 'solid',
+    'padding': '5px',})
+    table.set_header_row_style({
+    'color': '#fff',
+    'background-color': '#48a6fb',
+    'font-size': '18px',})
+    table.set_header_cell_style({
+    'padding': '15px',})
+
+
+    newdao = ''
+
+    table[1].set_cell_style({
+    'padding': '8px',
+    'font-size': '15px',})
+    for row in table.iter_data_rows():
+     introw = int(row[2].value)  
+     if introw > 10: #看看哪些人被代的多
+        row.set_style({
+            'background-color': '#ffdddd',})
+    body = table.to_html()
+    # html的charset='UTF-8'必须加上，否则中午会乱码
+    html = "<!DOCTYPE html><html><head><meta charset='UTF-8'></head><body>{0}</body></html>".format(body)
+        #tb.add_row([name,str(dao[qq]), str(dai[qq]), str(dao[qq]+dai[qq])])
+    imgkit.from_string(html, DAIDAO_jpg_PATH +'out.jpg')
+    await bot.send(ev,MessageSegment.image(f'file:///{DAIDAO_jpg_PATH}\\out.jpg'))
 
 @sv.on_prefix(["合刀"])
 async def hedao(bot, ev):
@@ -1238,3 +1290,13 @@ async def hedao(bot, ev):
     if (a+b<c):
         msg = f"当前BOSS血量为{d}\n这两刀打不死！"
         await bot.send(ev, msg)
+        
+@sv.on_prefix(('网页截图')) #软件装都装了不如再加个功能
+async def wyjt(bot, ev: CQEvent):
+    html = ev.message.extract_plain_text().strip()
+    if ("http" in html):
+     imgkit.from_url(html, DAIDAO_jpg_PATH +'html.jpg')
+     time.sleep(5)
+     await bot.send(ev,MessageSegment.image(f'file:///{DAIDAO_jpg_PATH}\\html.jpg'))
+    else:
+     await bot.send(ev, "要以http开头")
