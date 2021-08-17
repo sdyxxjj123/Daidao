@@ -80,7 +80,7 @@ if not DB_PATH:
     # 例：C:/Hoshino/hoshino/modules/yobot/yobot/src/client/yobot_data/yobotdata.db
     # 注意斜杠方向！！！
     #
-Version = '0.0.7'  
+Version = '0.8.1'  
 # 检查客户端版本
 def check_update_run():
     try:
