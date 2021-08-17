@@ -78,6 +78,7 @@
 - 5.优化触发器，减少误触发[@mahosho](https://github.com/mahosho)  
 - 6.优化日志处理方式[@A-kirami](https://github.com/A-kirami)  
 #### V0.8版本修正
+（注：需要删库，位置一般是C:\Users\Administrator\.hoshino中的Daidao.db）
 - 1.加入挂树留言
 ~~我们公会一直是挂树就挂树不要讲故事~~
 - 2.修正尾刀误触
