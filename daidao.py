@@ -29,21 +29,22 @@ boss_HP = {
 }
 bossData = {
     'cn':{    
-    'hp1': [6000000, 8000000, 10000000, 12000000, 20000000],
-    'hp2': [6000000, 8000000, 10000000, 12000000, 20000000],
-    'hp3': [6000000, 8000000, 10000000, 12000000, 20000000],
-    'hp4': [6000000, 8000000, 10000000, 12000000, 20000000],
+    'hp1': [6000000, 8000000, 10000000, 12000000, 15000000],
+    'hp2': [6000000, 8000000, 10000000, 12000000, 15000000],
+    'hp3': [6000000, 8000000, 10000000, 12000000, 15000000],
+    'hp4': [6000000, 8000000, 10000000, 12000000, 15000000],
     },
     'tw':{    
     'hp1': [6000000, 8000000, 10000000, 12000000, 15000000],
     'hp2': [6000000, 8000000, 10000000, 12000000, 15000000],
     'hp3': [7000000, 9000000, 13000000, 15000000, 20000000],
     'hp4': [17000000, 18000000, 20000000, 21000000, 23000000],
-    'hp5': [6000000, 8000000, 10000000, 12000000, 20000000],}
+    'hp5': [85000000, 90000000, 95000000, 100000000, 110000000],}
 }
 DAIDAO_DB_PATH = os.path.expanduser('~/.hoshino/daidao.db')
 SUPERUSERS = config.SUPERUSERS
-GroupID_ON = False #当GO版本为0.94fix4以上时，允许从群内发起私聊（即使用管理员身份强制私聊，不需要对方主动私聊过），如果低于该版本请不要开启
+GroupID_ON = True #当GO版本为0.94fix4以上时，允许从群内发起私聊（即使用管理员身份强制私聊，不需要对方主动私聊过），如果低于该版本请不要开启
+NOprivate = False #全局开关，启用后，不再尝试私聊，也不会在群内发送“私聊失败”等消息，仅做记录使用，降低机器人冻结风险。
 def get_db_path():
     if not (os.path.isfile(os.path.abspath(os.path.join(os.path.dirname(__file__), "../"
                                                         "yobot/yobot/src/client/yobot_data/yobotdata.db"))) or os.access(os.path.abspath(os.path.join(os.path.dirname(__file__), "../"
@@ -425,6 +426,7 @@ class DAICounter:
                            HOUR            NTEXT   NOT NULL,
                            MIN           INT    NOT NULL,
                            ID           INT    NOT NULL,
+                           LY        NTEXT   NOT NULL,
                            PRIMARY KEY(GID, UID));''')
         except:
             raise Exception('创建挂树表发生错误')
@@ -449,12 +451,18 @@ class DAICounter:
             return 0 if r is None else r[0]
         except:
             raise Exception('查找挂树归属发生错误')
+    def _get_GS_ly(self, gid, uid):
+        try:
+            r = self._connect().execute("SELECT LY FROM GS WHERE GID=? AND UID=?", (gid, uid)).fetchone()
+            return 0 if r is None else r[0]
+        except:
+            raise Exception('查找挂树归属发生错误')
             
-    def _set_GS_owner(self, gid, uid, Hour, Min, id):
+    def _set_GS_owner(self, gid, uid, Hour, Min, id ,ly):
         with self._connect() as conn:
             conn.execute(
-                "INSERT OR REPLACE INTO GS (GID, UID, HOUR, MIN ,ID) VALUES (?, ?, ?, ?, ?)",
-                (gid, uid, Hour, Min, id),
+                "INSERT OR REPLACE INTO GS (GID, UID, HOUR, MIN ,ID,LY) VALUES (?, ?, ?, ?, ?, ?)",
+                (gid, uid, Hour, Min, id,ly),
             )
 
     def _delete_GS(self, gid, uid):
@@ -553,26 +561,31 @@ async def kakin(bot, ev: CQEvent):
                         Hao = 1
                         Zhou +=1
                 dai._set_DAIDAO_owner(gid,ev.user_id,uid,Zhou,Hao)
-                try:
-                    if GroupID_ON == True:
-                        await bot.send_private_msg(user_id=int(uid),group_id=int(gid),message=f'您好~代刀手{user_card}({ev.user_id})正在为您代刀，请勿登录！本次代刀发起是在{Zhou}周目{Hao}号BOSS！')
-                    else:
-                        await bot.send_private_msg(user_id=int(uid), message=f'您好~代刀手{user_card}({ev.user_id})正在为您代刀，请勿登录！本次代刀发起是在{Zhou}周目{Hao}号BOSS！')
-                    count += 1
-                except:
-                    await bot.send(ev, '发送私聊代刀消息时发生错误，该用户可能没有私聊过机器人（但代刀正常记录，若机器人是管理员，则消息已正常发出）')
-                    fail += 1
+                if not NOprivate:
+                    try:
+                        if GroupID_ON == True:
+                            await bot.send_private_msg(user_id=int(uid),group_id=int(gid),message=f'您好~代刀手{user_card}({ev.user_id})正在为您代刀，请勿登录！本次代刀发起是在{Zhou}周目{Hao}号BOSS！')
+                        else:
+                            await bot.send_private_msg(user_id=int(uid), message=f'您好~代刀手{user_card}({ev.user_id})正在为您代刀，请勿登录！本次代刀发起是在{Zhou}周目{Hao}号BOSS！')
+                        count += 1
+                    except:
+                        await bot.send(ev, '发送私聊代刀消息时发生错误，该用户可能没有私聊过机器人（但代刀正常记录，若机器人是管理员，则消息已正常发出）')
+                        fail += 1
+                else:
+                    sv.logger.info('已记录代刀')
             else:
                 zhou = dai._get_Daidao_ZHOU(gid,uid)
                 hao = dai._get_Daidao_HAO(gid,uid)
                 user_card = await get_user_card(bot, ev.group_id, owner)
                 user_card2 = await get_user_card(bot, ev.group_id, uid)
                 await bot.send(ev, f'{user_card2}在{zhou}周目{hao}号BOSS由{user_card}发起了代刀，无法重复代刀')
-    if count:
+    if count and not NOprivate:
         if fail:
             await bot.send(ev, f"{user_card}开始代刀！已私聊通知{count}位用户！{fail}位用户通知失败！")
         else:
             await bot.send(ev, f"{user_card}开始代刀！已私聊通知{count}位用户！")
+    if NOprivate:
+        await bot.send(ev, f"{user_card}开始代刀！")
     
     
 @sv.on_rex(r'^报刀 ?\d+ ?$')
@@ -580,6 +593,14 @@ async def baodao(bot, ev: CQEvent):
     dai = DAICounter()
     gid = ev.group_id
     num = 0
+    Zhou = await get_boss_Zhou(gid)
+    Hao = await get_boss_Hao(gid)
+    HP = await get_boss_HP(gid)
+    if HP == 0:
+        Hao += 1
+        if Hao == 6:
+            Hao = 1
+            Zhou +=1 
     for m in ev.message:
         if m.type == 'at' and m.data['qq'] != 'all':
             uid = int(m.data['qq'])
@@ -589,14 +610,18 @@ async def baodao(bot, ev: CQEvent):
             dai._delete_SH(gid,uid)
             user_card = await get_user_card(bot, ev.group_id, ev.user_id)
             num += 1
-            try:
-                if GroupID_ON == True:
-                    await bot.send_private_msg(user_id=int(uid),group_id=int(gid),message=f'您好~代刀手{user_card}({ev.user_id})已经为您代刀完毕!')
-                else:
-                    await bot.send_private_msg(user_id=int(uid),message=f'您好~代刀手{user_card}({ev.user_id})已经为您代刀完毕!')
-                await bot.send(ev, f"{user_card}代刀结束！已私聊通知该用户！")
-            except:
-                await bot.send(ev, '发送私聊代刀消息时发生错误，该用户可能没有私聊过机器人（但代刀正常记录，若机器人是管理员，则消息已正常发出）')
+            if not NOprivate:
+                try:
+                    if GroupID_ON == True:
+                        await bot.send_private_msg(user_id=int(uid),group_id=int(gid),message=f'您好~代刀手{user_card}({ev.user_id})已经为您代刀完毕!')
+                    else:
+                        await bot.send_private_msg(user_id=int(uid),message=f'您好~代刀手{user_card}({ev.user_id})已经为您代刀完毕!')
+                    await bot.send(ev, f"{user_card}代刀结束！已私聊通知该用户！")
+                except:
+                    await bot.send(ev, '发送私聊代刀消息时发生错误，该用户可能没有私聊过机器人（但代刀正常记录，若机器人是管理员，则消息已正常发出）')
+            else:
+                await bot.send(ev, f"{user_card}代刀结束！")
+    await bot.send(ev, f"状态反馈：当前{Zhou}周目{Hao}号怪，血量{HP}.")
     if num == 0:
         uid = ev.user_id
         dai._delete_DAIDAO_owner(gid,uid)
@@ -637,7 +662,7 @@ async def search_kakin(bot, ev: CQEvent):
             user_card2 = await get_user_card(bot, ev.group_id, uid)
             await bot.send(ev, f'您的账号在{zhou}周目{hao}号BOSS由{user_card}发起了代刀，请小心顶号！')
         
-@sv.on_rex(r'^尾刀 ?$')
+@sv.on_rex(r'^尾刀$')
 async def weidao(bot, ev: CQEvent):
     dai = DAICounter()
     gid = ev.group_id
@@ -660,33 +685,36 @@ async def weidao(bot, ev: CQEvent):
             dai._delete_GS(gid,uid)
             msgGS += f"[CQ:at,qq={uid}]"
         if msgGS != "挂树的下来吧:\n":
-            await bot.send(ev, msgGS) 
+            await bot.send(ev, msgGS)
+    Zhou = await get_boss_Zhou(gid)
+    Hao = await get_boss_Hao(gid)
+    HP = await get_boss_HP(gid)
+    Hao += 1
+    if Hao == 6:
+        Hao = 1
+        Zhou +=1 
     for m in ev.message:
         if m.type == 'at' and m.data['qq'] != 'all':
             uid = int(m.data['qq'])
             user_card = await get_user_card(bot, ev.group_id, ev.user_id)
             dai._delete_DAIDAO_owner(gid,uid)
             dai._delete_ZZ_Suo(gid,uid)
-            Zhou = await get_boss_Zhou(gid)
-            Hao = await get_boss_Hao(gid)
-            HP = await get_boss_HP(gid)
-            if HP == 0:
-                Hao += 1
-                if Hao == 6:
-                    Hao = 1
-                    Zhou +=1
             uid = int(m.data['qq'])
             data = str(f'在{Zhou}周目{Hao}号BOSS收尾，代刀手为{user_card}')
             dai._set_BC_owner(gid,uid,data)
             num += 1
-            try:
-                if GroupID_ON == True:
-                    await bot.send_private_msg(user_id=int(uid), group_id=int(gid),message=f'您好~代刀手{user_card}({ev.user_id})已经为您代刀完毕!(您是尾刀，请关注群消息)')
-                else:
-                    await bot.send_private_msg(user_id=int(uid), message=f'您好~代刀手{user_card}({ev.user_id})已经为您代刀完毕!(您是尾刀，请关注群消息)')
-                await bot.send(ev, f"{user_card}代刀结束！已私聊通知该用户！且已记录补偿刀！")
-            except:
-                await bot.send(ev, '发送私聊代刀消息时发生错误，该用户可能没有私聊过机器人（但代刀正常记录，若机器人是管理员，则消息已正常发出）')
+            if not NOprivate:
+                try:
+                    if GroupID_ON == True:
+                        await bot.send_private_msg(user_id=int(uid), group_id=int(gid),message=f'您好~代刀手{user_card}({ev.user_id})已经为您代刀完毕!(您是尾刀，请关注群消息)')
+                    else:
+                        await bot.send_private_msg(user_id=int(uid), message=f'您好~代刀手{user_card}({ev.user_id})已经为您代刀完毕!(您是尾刀，请关注群消息)')
+                    await bot.send(ev, f"{user_card}代刀结束！已私聊通知该用户！补偿刀信息已录入，请及时更新！")
+                except:
+                    await bot.send(ev, '发送私聊代刀消息时发生错误，该用户可能没有私聊过机器人（但代刀正常记录，若机器人是管理员，则消息已正常发出）')
+            else:
+                await bot.send(ev, f"{user_card}代刀结束！补偿刀信息已录入，请及时更新！")
+    await bot.send(ev, f"状态反馈：当前{Zhou}周目{Hao}号怪，血量{HP}.")
     if num == 0:
         uid = ev.user_id
         dai._delete_DAIDAO_owner(gid,uid)
@@ -708,20 +736,26 @@ async def SLL(bot, ev: CQEvent):
     if bool(match.group(1)):
         return
     count = 0
+    dai = DAICounter()
     for m in ev.message:
         if m.type == 'at' and m.data['qq'] != 'all':
             uid = int(m.data['qq'])
             user_card = await get_user_card(bot, ev.group_id, ev.user_id)
-            try:
-                if GroupID_ON == True:
-                    await bot.send_private_msg(user_id=int(uid),group_id=int(gid),message=f'您好~代刀手{user_card}({ev.user_id})使用了您的SL!请关注群消息！')
-                else:
-                    await bot.send_private_msg(user_id=int(uid), message=f'您好~代刀手{user_card}({ev.user_id})使用了您的SL!请关注群消息！')
-            except:
-                await bot.send(ev, '发送私聊代刀消息时发生错误，该用户可能没有私聊过机器人（但代刀正常记录，若机器人是管理员，则消息已正常发出）')
-            count += 1
+            if dai._get_GS_id(gid,uid) !=0:
+                dai._delete_GS(gid,uid)
+            if not NOprivate:
+                try:
+                    if GroupID_ON == True:
+                        await bot.send_private_msg(user_id=int(uid),group_id=int(gid),message=f'您好~代刀手{user_card}({ev.user_id})使用了您的SL!请关注群消息！')
+                    else:
+                        await bot.send_private_msg(user_id=int(uid), message=f'您好~代刀手{user_card}({ev.user_id})使用了您的SL!请关注群消息！')
+                except:
+                    await bot.send(ev, '发送私聊代刀消息时发生错误，该用户可能没有私聊过机器人（但代刀正常记录，若机器人是管理员，则消息已正常发出）')
+                count += 1
     if count:
         await bot.send(ev, f"{user_card}在代刀中使用了SL！已通知{count}位用户！")
+    if NOprivate:
+        await bot.send(ev, f"{user_card}在代刀中使用了SL！")
         
 @sv.on_rex(r'^挂树 ?$|^挂树[：:](.*)') #这个地方match.group(1)提取留言
 async def guashu(bot, ev: CQEvent):
@@ -732,24 +766,32 @@ async def guashu(bot, ev: CQEvent):
     dai = DAICounter()
     gid = ev.group_id
     id = ev.user_id
+    match = ev['match']
+    ly = match.group(1)
+    if ly == None:
+        ly = '无'
     for m in ev.message:
         if m.type == 'at' and m.data['qq'] != 'all':
             uid = int(m.data['qq'])
             user_card = await get_user_card(bot, ev.group_id, ev.user_id)
-            dai._set_GS_owner(gid,uid,Hour,Min,id)
-            try:
-                if GroupID_ON == True:
-                    await bot.send_private_msg(user_id=int(uid),group_id=int(gid),message=f'您好~代刀手{user_card}({ev.user_id})在您的账号上代刀时挂树!请暂时不要登陆并关注群消息！')
-                else:
-                    await bot.send_private_msg(user_id=int(uid), message=f'您好~代刀手{user_card}({ev.user_id})在您的账号上代刀时挂树!请暂时不要登陆并关注群消息！')
-            except:
-                await bot.send(ev, '发送私聊代刀消息时发生错误，该用户可能没有私聊过机器人（但代刀正常记录，若机器人是管理员，则消息已正常发出）')
+            dai._set_GS_owner(gid,uid,Hour,Min,id,ly)
+            if not NOprivate:
+                try:
+                    if GroupID_ON == True:
+                        await bot.send_private_msg(user_id=int(uid),group_id=int(gid),message=f'您好~代刀手{user_card}({ev.user_id})在您的账号上代刀时挂树!请暂时不要登陆并关注群消息！')
+                    else:
+                        await bot.send_private_msg(user_id=int(uid), message=f'您好~代刀手{user_card}({ev.user_id})在您的账号上代刀时挂树!请暂时不要登陆并关注群消息！')
+                except:
+                    await bot.send(ev, '发送私聊代刀消息时发生错误，该用户可能没有私聊过机器人（但代刀正常记录，若机器人是管理员，则消息已正常发出）')
             count += 1
     if count:
-        await bot.send(ev, f"{user_card}在代刀中挂树！已通知{count}位用户！")
+        if not NOprivate:
+            await bot.send(ev, f"{user_card}在代刀中挂树！已通知{count}位用户！")
+        else:
+            await bot.send(ev, f"{user_card}在代刀中挂树！")
     else:
         uid = ev.user_id
-        dai._set_GS_owner(gid,uid,Hour,Min,id)
+        dai._set_GS_owner(gid,uid,Hour,Min,id,ly)
         await bot.send(ev, '已记录挂树')
 
 @sv.on_rex(r'^取消挂树 ?$')
@@ -791,14 +833,17 @@ async def quxiao(bot, ev: CQEvent):
             if owner !=0:
                 dai._delete_DAIDAO_owner(gid,uid)
                 user_card2 = await get_user_card(bot, ev.group_id, uid)
-                try:
-                    if GroupID_ON == True:
-                        await bot.send_private_msg(user_id=int(uid),group_id=int(gid),message=f'您好~代刀手{user_card}({ev.user_id})取消了代刀！')
-                    else:
-                        await bot.send_private_msg(user_id=int(uid), message=f'您好~代刀手{user_card}({ev.user_id})取消了代刀！')
-                    await bot.send(ev, f"{user_card}取消了为{user_card2}的代刀！已私聊通知该用户！")
-                except:
-                    await bot.finish(ev, f'发送私聊取消代刀消息时发生错误，{user_card2}可能没有私聊过机器人（但取消代刀正常记录）')
+                if not NOprivate:
+                    try:
+                        if GroupID_ON == True:
+                            await bot.send_private_msg(user_id=int(uid),group_id=int(gid),message=f'您好~代刀手{user_card}({ev.user_id})取消了代刀！')
+                        else:
+                            await bot.send_private_msg(user_id=int(uid), message=f'您好~代刀手{user_card}({ev.user_id})取消了代刀！')
+                        await bot.send(ev, f"{user_card}取消了为{user_card2}的代刀！已私聊通知该用户！")
+                    except:
+                        await bot.finish(ev, f'发送私聊取消代刀消息时发生错误，{user_card2}可能没有私聊过机器人（但取消代刀正常记录）')
+                else:
+                    await bot.send(ev, f"{user_card}取消了为{user_card2}的代刀！")
             else:
                 await bot.finish(ev, f'{user_card2}未在代刀状态！')
 
@@ -905,8 +950,9 @@ async def XXZT(bot, ev: CQEvent):
                     Hour = dai._get_GS_Hour(gid,uid)
                     Min = dai._get_GS_MIN(gid,uid)
                     id = dai._get_GS_id(gid,uid)
+                    ly = dai._get_GS_ly(gid,uid)
                     user = await get_user_card(bot, ev.group_id, id)
-                    score_dict[user_card_dict[uid]] =  [Hour,Min,user]
+                    score_dict[user_card_dict[uid]] =  [Hour,Min,user,ly]
                 else:
                     continue
         group_ranking = sorted(score_dict.items(),key = lambda x:x[1],reverse = True)
@@ -915,9 +961,9 @@ async def XXZT(bot, ev: CQEvent):
         for i in range(len(group_ranking)):
             if group_ranking[i][1] != 0:
                 if group_ranking[i][1][2] != group_ranking[i][0]:
-                    msg4 += f'{i+1}. {group_ranking[i][0]} 挂树开始时间：{group_ranking[i][1][0]} 时{group_ranking[i][1][1]} 分 刀手：{group_ranking[i][1][2]},已挂树{60*(now.hour-int(group_ranking[i][1][0]))+now.minute-int(group_ranking[i][1][1])}分钟\n'
+                    msg4 += f'{i+1}. {group_ranking[i][0]} 挂树开始时间：{group_ranking[i][1][0]} 时{group_ranking[i][1][1]} 分 刀手：{group_ranking[i][1][2]},留言：{group_ranking[i][1][3]},已挂树{60*(now.hour-int(group_ranking[i][1][0]))+now.minute-int(group_ranking[i][1][1])}分钟\n'
                 else:
-                    msg4 += f'{i+1}. {group_ranking[i][0]} 挂树开始时间：{group_ranking[i][1][0]} 时{group_ranking[i][1][1]} 分,已挂树{60*(now.hour-int(group_ranking[i][1][0]))+now.minute-int(group_ranking[i][1][1])}分钟\n'
+                    msg4 += f'{i+1}. {group_ranking[i][0]} 挂树开始时间：{group_ranking[i][1][0]} 时{group_ranking[i][1][1]} 分,留言：{group_ranking[i][1][3]},已挂树{60*(now.hour-int(group_ranking[i][1][0]))+now.minute-int(group_ranking[i][1][1])}分钟\n'
         if msg4 == '当前挂树的有:\n':
             msg4 = '当前没有人挂树\n'
         msg = msg1+msg3+msg4
@@ -937,8 +983,9 @@ async def CHASHU(bot, ev: CQEvent):
                     Hour = dai._get_GS_Hour(gid,uid)
                     Min = dai._get_GS_MIN(gid,uid)
                     id = dai._get_GS_id(gid,uid)
+                    ly = dai._get_GS_ly(gid,uid)
                     user = await get_user_card(bot, ev.group_id, id)
-                    score_dict[user_card_dict[uid]] =  [Hour,Min,user]
+                    score_dict[user_card_dict[uid]] =  [Hour,Min,user,ly]
                 else:
                     continue
         group_ranking = sorted(score_dict.items(),key = lambda x:x[1],reverse = True)
@@ -946,9 +993,9 @@ async def CHASHU(bot, ev: CQEvent):
         for i in range(len(group_ranking)):
             if group_ranking[i][1] != 0:
                 if group_ranking[i][1][2] != group_ranking[i][0]:
-                    msg += f'{i+1}. {group_ranking[i][0]} 挂树开始时间：{group_ranking[i][1][0]} 时{group_ranking[i][1][1]} 分 刀手：{group_ranking[i][1][2]},已挂树{60*(now.hour-int(group_ranking[i][1][0]))+now.minute-int(group_ranking[i][1][1])}分钟\n'
+                    msg += f'{i+1}. {group_ranking[i][0]} 挂树开始时间：{group_ranking[i][1][0]} 时{group_ranking[i][1][1]} 分 刀手：{group_ranking[i][1][2]},留言：{group_ranking[i][1][3]},已挂树{60*(now.hour-int(group_ranking[i][1][0]))+now.minute-int(group_ranking[i][1][1])}分钟\n'
                 else:
-                    msg += f'{i+1}. {group_ranking[i][0]} 挂树开始时间：{group_ranking[i][1][0]} 时{group_ranking[i][1][1]} 分,已挂树{60*(now.hour-int(group_ranking[i][1][0]))+now.minute-int(group_ranking[i][1][1])}分钟\n'
+                    msg += f'{i+1}. {group_ranking[i][0]} 挂树开始时间：{group_ranking[i][1][0]} 时{group_ranking[i][1][1]} 分,留言：{group_ranking[i][1][3]},已挂树{60*(now.hour-int(group_ranking[i][1][0]))+now.minute-int(group_ranking[i][1][1])}分钟\n'
         if msg == '当前挂树的有:\n':
             msg = '当前没有人挂树\n'
         await bot.send(ev, msg.strip())
