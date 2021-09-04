@@ -33,6 +33,7 @@ bossData = {
     'hp2': [6000000, 8000000, 10000000, 12000000, 15000000],
     'hp3': [6000000, 8000000, 10000000, 12000000, 15000000],
     'hp4': [6000000, 8000000, 10000000, 12000000, 15000000],
+    'hp5': [6000000, 8000000, 10000000, 12000000, 15000000],
     },
     'tw':{    
     'hp1': [6000000, 8000000, 10000000, 12000000, 15000000],
@@ -263,6 +264,8 @@ async def get_boss_HP(gid:str) -> str:
                 boss_hp = bossData[server]['hp3'][Hao-1]
             if Zhou >= 35:
                 boss_hp = bossData[server]['hp4'][Hao-1]
+            if Zhou >= 45:
+                boss_hp = bossData[server]['hp5'][Hao-1]
         return boss_hp
 
 class DAICounter:
@@ -1242,7 +1245,7 @@ async def hedao(bot, ev):
         boss_HP[gid] = args[2]
     server = str(await get_group_sv(gid))
     if server == 'cn':
-        bz = 10
+        bz = 20
         mode = '国服'
     else:
         bz = 20
