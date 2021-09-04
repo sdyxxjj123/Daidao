@@ -4,7 +4,7 @@
 这个插件是基于其他大佬的插件照葫芦画瓢写的代刀便利通知系统，主要是针对Hoshinobot+Yobot的用户  
 部分基础代码来自 https://github.com/pcrbot/filter_knife   
 在此表示感谢！（之前找不到插件在哪了没挂出来，致歉）  
-如果有研究过我的贵族决斗版本，会发现他们的代码非常相似（） 
+如果有研究过我的贵族决斗版本，会发现他们的代码非常相似（）   
 本插件使用[GLWTPL(Good Luck With That Public License)](https://github.com/me-shaon/GLWTPL)开源，即： 
 - 1.代码处于可用或不可用状态，没有第三种情况。  
 - 2.版权所有© 每个人，除了作者  
