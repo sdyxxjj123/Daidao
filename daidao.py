@@ -15,20 +15,13 @@ from hoshino.typing import CQEvent
 import copy
 import json
 import nonebot
-import time
 from nonebot import on_command, on_request,MessageSegment
 from hoshino import sucmd,config,get_bot
 from hoshino.typing import NoticeSession
 from multiprocessing import Pool
 import requests
-#import prettytable as pt
 import imgkit
 from HTMLTable import  HTMLTable
-
-
-
-# tb = pt.PrettyTable( ["City name", "Area", "Population", "Annual Rainfall"])
-
 
 sv = Service('daidao', bundle='daidao', help_='''
 '''.strip())
@@ -37,22 +30,24 @@ boss_HP = {
 }
 bossData = {
     'cn':{    
-    'hp1': [6000000, 8000000, 10000000, 12000000, 20000000],
-    'hp2': [6000000, 8000000, 10000000, 12000000, 20000000],
-    'hp3': [6000000, 8000000, 10000000, 12000000, 20000000],
-    'hp4': [6000000, 8000000, 10000000, 12000000, 20000000],
+    'hp1': [6000000, 8000000, 10000000, 12000000, 15000000],
+    'hp2': [6000000, 8000000, 10000000, 12000000, 15000000],
+    'hp3': [6000000, 8000000, 10000000, 12000000, 15000000],
+    'hp4': [6000000, 8000000, 10000000, 12000000, 15000000],
+    'hp5': [6000000, 8000000, 10000000, 12000000, 15000000],
     },
     'tw':{    
     'hp1': [6000000, 8000000, 10000000, 12000000, 15000000],
     'hp2': [6000000, 8000000, 10000000, 12000000, 15000000],
     'hp3': [7000000, 9000000, 13000000, 15000000, 20000000],
     'hp4': [17000000, 18000000, 20000000, 21000000, 23000000],
-    'hp5': [6000000, 8000000, 10000000, 12000000, 20000000],}
+    'hp5': [85000000, 90000000, 95000000, 100000000, 110000000],}
 }
 DAIDAO_DB_PATH = os.path.expanduser('~/.hoshino/daidao.db')
 DAIDAO_jpg_PATH = os.path.expanduser('~/.hoshino/')
 SUPERUSERS = config.SUPERUSERS
-GroupID_ON = False #当GO版本为0.94fix4以上时，允许从群内发起私聊（即使用管理员身份强制私聊，不需要对方主动私聊过），如果低于该版本请不要开启
+GroupID_ON = True #当GO版本为0.94fix4以上时，允许从群内发起私聊（即使用管理员身份强制私聊，不需要对方主动私聊过），如果低于该版本请不要开启
+NOprivate = False #全局开关，启用后，不再尝试私聊，也不会在群内发送“私聊失败”等消息，仅做记录使用，降低机器人冻结风险。
 def get_db_path():
     if not (os.path.isfile(os.path.abspath(os.path.join(os.path.dirname(__file__), "../"
                                                         "yobot/yobot/src/client/yobot_data/yobotdata.db"))) or os.access(os.path.abspath(os.path.join(os.path.dirname(__file__), "../"
@@ -88,7 +83,7 @@ if not DB_PATH:
     # 例：C:/Hoshino/hoshino/modules/yobot/yobot/src/client/yobot_data/yobotdata.db
     # 注意斜杠方向！！！
     #
-Version = '0.0.7'  
+Version = '0.8.1'  
 # 检查客户端版本
 def check_update_run():
     try:
@@ -271,6 +266,8 @@ async def get_boss_HP(gid:str) -> str:
                 boss_hp = bossData[server]['hp3'][Hao-1]
             if Zhou >= 35:
                 boss_hp = bossData[server]['hp4'][Hao-1]
+            if Zhou >= 45:
+                boss_hp = bossData[server]['hp5'][Hao-1]
         return boss_hp
 
 class DAICounter:
@@ -434,6 +431,7 @@ class DAICounter:
                            HOUR            NTEXT   NOT NULL,
                            MIN           INT    NOT NULL,
                            ID           INT    NOT NULL,
+                           LY        NTEXT   NOT NULL,
                            PRIMARY KEY(GID, UID));''')
         except:
             raise Exception('创建挂树表发生错误')
@@ -458,12 +456,18 @@ class DAICounter:
             return 0 if r is None else r[0]
         except:
             raise Exception('查找挂树归属发生错误')
+    def _get_GS_ly(self, gid, uid):
+        try:
+            r = self._connect().execute("SELECT LY FROM GS WHERE GID=? AND UID=?", (gid, uid)).fetchone()
+            return 0 if r is None else r[0]
+        except:
+            raise Exception('查找挂树归属发生错误')
             
-    def _set_GS_owner(self, gid, uid, Hour, Min, id):
+    def _set_GS_owner(self, gid, uid, Hour, Min, id ,ly):
         with self._connect() as conn:
             conn.execute(
-                "INSERT OR REPLACE INTO GS (GID, UID, HOUR, MIN ,ID) VALUES (?, ?, ?, ?, ?)",
-                (gid, uid, Hour, Min, id),
+                "INSERT OR REPLACE INTO GS (GID, UID, HOUR, MIN ,ID,LY) VALUES (?, ?, ?, ?, ?, ?)",
+                (gid, uid, Hour, Min, id,ly),
             )
 
     def _delete_GS(self, gid, uid):
@@ -562,26 +566,31 @@ async def kakin(bot, ev: CQEvent):
                         Hao = 1
                         Zhou +=1
                 dai._set_DAIDAO_owner(gid,ev.user_id,uid,Zhou,Hao)
-                try:
-                    if GroupID_ON == True:
-                        await bot.send_private_msg(user_id=int(uid),group_id=int(gid),message=f'您好~代刀手{user_card}({ev.user_id})正在为您代刀，请勿登录！本次代刀发起是在{Zhou}周目{Hao}号BOSS！')
-                    else:
-                        await bot.send_private_msg(user_id=int(uid), message=f'您好~代刀手{user_card}({ev.user_id})正在为您代刀，请勿登录！本次代刀发起是在{Zhou}周目{Hao}号BOSS！')
-                    count += 1
-                except:
-                    await bot.send(ev, '发送私聊代刀消息时发生错误，该用户可能没有私聊过机器人（但代刀正常记录，若机器人是管理员，则消息已正常发出）')
-                    fail += 1
+                if not NOprivate:
+                    try:
+                        if GroupID_ON == True:
+                            await bot.send_private_msg(user_id=int(uid),group_id=int(gid),message=f'您好~代刀手{user_card}({ev.user_id})正在为您代刀，请勿登录！本次代刀发起是在{Zhou}周目{Hao}号BOSS！')
+                        else:
+                            await bot.send_private_msg(user_id=int(uid), message=f'您好~代刀手{user_card}({ev.user_id})正在为您代刀，请勿登录！本次代刀发起是在{Zhou}周目{Hao}号BOSS！')
+                        count += 1
+                    except:
+                        await bot.send(ev, '发送私聊代刀消息时发生错误，该用户可能没有私聊过机器人（但代刀正常记录，若机器人是管理员，则消息已正常发出）')
+                        fail += 1
+                else:
+                    sv.logger.info('已记录代刀')
             else:
                 zhou = dai._get_Daidao_ZHOU(gid,uid)
                 hao = dai._get_Daidao_HAO(gid,uid)
                 user_card = await get_user_card(bot, ev.group_id, owner)
                 user_card2 = await get_user_card(bot, ev.group_id, uid)
                 await bot.send(ev, f'{user_card2}在{zhou}周目{hao}号BOSS由{user_card}发起了代刀，无法重复代刀')
-    if count:
+    if count and not NOprivate:
         if fail:
             await bot.send(ev, f"{user_card}开始代刀！已私聊通知{count}位用户！{fail}位用户通知失败！")
         else:
             await bot.send(ev, f"{user_card}开始代刀！已私聊通知{count}位用户！")
+    if NOprivate:
+        await bot.send(ev, f"{user_card}开始代刀！")
     
     
 @sv.on_rex(r'^报刀 ?\d+ ?$')
@@ -589,6 +598,14 @@ async def baodao(bot, ev: CQEvent):
     dai = DAICounter()
     gid = ev.group_id
     num = 0
+    Zhou = await get_boss_Zhou(gid)
+    Hao = await get_boss_Hao(gid)
+    HP = await get_boss_HP(gid)
+    if HP == 0:
+        Hao += 1
+        if Hao == 6:
+            Hao = 1
+            Zhou +=1 
     for m in ev.message:
         if m.type == 'at' and m.data['qq'] != 'all':
             uid = int(m.data['qq'])
@@ -598,14 +615,18 @@ async def baodao(bot, ev: CQEvent):
             dai._delete_SH(gid,uid)
             user_card = await get_user_card(bot, ev.group_id, ev.user_id)
             num += 1
-            try:
-                if GroupID_ON == True:
-                    await bot.send_private_msg(user_id=int(uid),group_id=int(gid),message=f'您好~代刀手{user_card}({ev.user_id})已经为您代刀完毕!')
-                else:
-                    await bot.send_private_msg(user_id=int(uid),message=f'您好~代刀手{user_card}({ev.user_id})已经为您代刀完毕!')
-                await bot.send(ev, f"{user_card}代刀结束！已私聊通知该用户！")
-            except:
-                await bot.send(ev, '发送私聊代刀消息时发生错误，该用户可能没有私聊过机器人（但代刀正常记录，若机器人是管理员，则消息已正常发出）')
+            if not NOprivate:
+                try:
+                    if GroupID_ON == True:
+                        await bot.send_private_msg(user_id=int(uid),group_id=int(gid),message=f'您好~代刀手{user_card}({ev.user_id})已经为您代刀完毕!')
+                    else:
+                        await bot.send_private_msg(user_id=int(uid),message=f'您好~代刀手{user_card}({ev.user_id})已经为您代刀完毕!')
+                    await bot.send(ev, f"{user_card}代刀结束！已私聊通知该用户！")
+                except:
+                    await bot.send(ev, '发送私聊代刀消息时发生错误，该用户可能没有私聊过机器人（但代刀正常记录，若机器人是管理员，则消息已正常发出）')
+            else:
+                await bot.send(ev, f"{user_card}代刀结束！")
+    await bot.send(ev, f"状态反馈：当前{Zhou}周目{Hao}号怪，血量{HP}.")
     if num == 0:
         uid = ev.user_id
         dai._delete_DAIDAO_owner(gid,uid)
@@ -646,7 +667,7 @@ async def search_kakin(bot, ev: CQEvent):
             user_card2 = await get_user_card(bot, ev.group_id, uid)
             await bot.send(ev, f'您的账号在{zhou}周目{hao}号BOSS由{user_card}发起了代刀，请小心顶号！')
         
-@sv.on_rex(r'^尾刀 ?$')
+@sv.on_rex(r'^尾刀$')
 async def weidao(bot, ev: CQEvent):
     dai = DAICounter()
     gid = ev.group_id
@@ -669,33 +690,36 @@ async def weidao(bot, ev: CQEvent):
             dai._delete_GS(gid,uid)
             msgGS += f"[CQ:at,qq={uid}]"
         if msgGS != "挂树的下来吧:\n":
-            await bot.send(ev, msgGS) 
+            await bot.send(ev, msgGS)
+    Zhou = await get_boss_Zhou(gid)
+    Hao = await get_boss_Hao(gid)
+    HP = await get_boss_HP(gid)
+    Hao += 1
+    if Hao == 6:
+        Hao = 1
+        Zhou +=1 
     for m in ev.message:
         if m.type == 'at' and m.data['qq'] != 'all':
             uid = int(m.data['qq'])
             user_card = await get_user_card(bot, ev.group_id, ev.user_id)
             dai._delete_DAIDAO_owner(gid,uid)
             dai._delete_ZZ_Suo(gid,uid)
-            Zhou = await get_boss_Zhou(gid)
-            Hao = await get_boss_Hao(gid)
-            HP = await get_boss_HP(gid)
-            if HP == 0:
-                Hao += 1
-                if Hao == 6:
-                    Hao = 1
-                    Zhou +=1
             uid = int(m.data['qq'])
             data = str(f'在{Zhou}周目{Hao}号BOSS收尾，代刀手为{user_card}')
             dai._set_BC_owner(gid,uid,data)
             num += 1
-            try:
-                if GroupID_ON == True:
-                    await bot.send_private_msg(user_id=int(uid), group_id=int(gid),message=f'您好~代刀手{user_card}({ev.user_id})已经为您代刀完毕!(您是尾刀，请关注群消息)')
-                else:
-                    await bot.send_private_msg(user_id=int(uid), message=f'您好~代刀手{user_card}({ev.user_id})已经为您代刀完毕!(您是尾刀，请关注群消息)')
-                await bot.send(ev, f"{user_card}代刀结束！已私聊通知该用户！且已记录补偿刀！")
-            except:
-                await bot.send(ev, '发送私聊代刀消息时发生错误，该用户可能没有私聊过机器人（但代刀正常记录，若机器人是管理员，则消息已正常发出）')
+            if not NOprivate:
+                try:
+                    if GroupID_ON == True:
+                        await bot.send_private_msg(user_id=int(uid), group_id=int(gid),message=f'您好~代刀手{user_card}({ev.user_id})已经为您代刀完毕!(您是尾刀，请关注群消息)')
+                    else:
+                        await bot.send_private_msg(user_id=int(uid), message=f'您好~代刀手{user_card}({ev.user_id})已经为您代刀完毕!(您是尾刀，请关注群消息)')
+                    await bot.send(ev, f"{user_card}代刀结束！已私聊通知该用户！补偿刀信息已录入，请及时更新！")
+                except:
+                    await bot.send(ev, '发送私聊代刀消息时发生错误，该用户可能没有私聊过机器人（但代刀正常记录，若机器人是管理员，则消息已正常发出）')
+            else:
+                await bot.send(ev, f"{user_card}代刀结束！补偿刀信息已录入，请及时更新！")
+    await bot.send(ev, f"状态反馈：当前{Zhou}周目{Hao}号怪，血量{HP}.")
     if num == 0:
         uid = ev.user_id
         dai._delete_DAIDAO_owner(gid,uid)
@@ -717,20 +741,26 @@ async def SLL(bot, ev: CQEvent):
     if bool(match.group(1)):
         return
     count = 0
+    dai = DAICounter()
     for m in ev.message:
         if m.type == 'at' and m.data['qq'] != 'all':
             uid = int(m.data['qq'])
             user_card = await get_user_card(bot, ev.group_id, ev.user_id)
-            try:
-                if GroupID_ON == True:
-                    await bot.send_private_msg(user_id=int(uid),group_id=int(gid),message=f'您好~代刀手{user_card}({ev.user_id})使用了您的SL!请关注群消息！')
-                else:
-                    await bot.send_private_msg(user_id=int(uid), message=f'您好~代刀手{user_card}({ev.user_id})使用了您的SL!请关注群消息！')
-            except:
-                await bot.send(ev, '发送私聊代刀消息时发生错误，该用户可能没有私聊过机器人（但代刀正常记录，若机器人是管理员，则消息已正常发出）')
-            count += 1
+            if dai._get_GS_id(gid,uid) !=0:
+                dai._delete_GS(gid,uid)
+            if not NOprivate:
+                try:
+                    if GroupID_ON == True:
+                        await bot.send_private_msg(user_id=int(uid),group_id=int(gid),message=f'您好~代刀手{user_card}({ev.user_id})使用了您的SL!请关注群消息！')
+                    else:
+                        await bot.send_private_msg(user_id=int(uid), message=f'您好~代刀手{user_card}({ev.user_id})使用了您的SL!请关注群消息！')
+                except:
+                    await bot.send(ev, '发送私聊代刀消息时发生错误，该用户可能没有私聊过机器人（但代刀正常记录，若机器人是管理员，则消息已正常发出）')
+                count += 1
     if count:
         await bot.send(ev, f"{user_card}在代刀中使用了SL！已通知{count}位用户！")
+    if NOprivate:
+        await bot.send(ev, f"{user_card}在代刀中使用了SL！")
         
 @sv.on_rex(r'^挂树 ?$|^挂树[：:](.*)') #这个地方match.group(1)提取留言
 async def guashu(bot, ev: CQEvent):
@@ -741,24 +771,32 @@ async def guashu(bot, ev: CQEvent):
     dai = DAICounter()
     gid = ev.group_id
     id = ev.user_id
+    match = ev['match']
+    ly = match.group(1)
+    if ly == None:
+        ly = '无'
     for m in ev.message:
         if m.type == 'at' and m.data['qq'] != 'all':
             uid = int(m.data['qq'])
             user_card = await get_user_card(bot, ev.group_id, ev.user_id)
-            dai._set_GS_owner(gid,uid,Hour,Min,id)
-            try:
-                if GroupID_ON == True:
-                    await bot.send_private_msg(user_id=int(uid),group_id=int(gid),message=f'您好~代刀手{user_card}({ev.user_id})在您的账号上代刀时挂树!请暂时不要登陆并关注群消息！')
-                else:
-                    await bot.send_private_msg(user_id=int(uid), message=f'您好~代刀手{user_card}({ev.user_id})在您的账号上代刀时挂树!请暂时不要登陆并关注群消息！')
-            except:
-                await bot.send(ev, '发送私聊代刀消息时发生错误，该用户可能没有私聊过机器人（但代刀正常记录，若机器人是管理员，则消息已正常发出）')
+            dai._set_GS_owner(gid,uid,Hour,Min,id,ly)
+            if not NOprivate:
+                try:
+                    if GroupID_ON == True:
+                        await bot.send_private_msg(user_id=int(uid),group_id=int(gid),message=f'您好~代刀手{user_card}({ev.user_id})在您的账号上代刀时挂树!请暂时不要登陆并关注群消息！')
+                    else:
+                        await bot.send_private_msg(user_id=int(uid), message=f'您好~代刀手{user_card}({ev.user_id})在您的账号上代刀时挂树!请暂时不要登陆并关注群消息！')
+                except:
+                    await bot.send(ev, '发送私聊代刀消息时发生错误，该用户可能没有私聊过机器人（但代刀正常记录，若机器人是管理员，则消息已正常发出）')
             count += 1
     if count:
-        await bot.send(ev, f"{user_card}在代刀中挂树！已通知{count}位用户！")
+        if not NOprivate:
+            await bot.send(ev, f"{user_card}在代刀中挂树！已通知{count}位用户！")
+        else:
+            await bot.send(ev, f"{user_card}在代刀中挂树！")
     else:
         uid = ev.user_id
-        dai._set_GS_owner(gid,uid,Hour,Min,id)
+        dai._set_GS_owner(gid,uid,Hour,Min,id,ly)
         await bot.send(ev, '已记录挂树')
 
 @sv.on_rex(r'^取消挂树 ?$')
@@ -800,14 +838,17 @@ async def quxiao(bot, ev: CQEvent):
             if owner !=0:
                 dai._delete_DAIDAO_owner(gid,uid)
                 user_card2 = await get_user_card(bot, ev.group_id, uid)
-                try:
-                    if GroupID_ON == True:
-                        await bot.send_private_msg(user_id=int(uid),group_id=int(gid),message=f'您好~代刀手{user_card}({ev.user_id})取消了代刀！')
-                    else:
-                        await bot.send_private_msg(user_id=int(uid), message=f'您好~代刀手{user_card}({ev.user_id})取消了代刀！')
-                    await bot.send(ev, f"{user_card}取消了为{user_card2}的代刀！已私聊通知该用户！")
-                except:
-                    await bot.finish(ev, f'发送私聊取消代刀消息时发生错误，{user_card2}可能没有私聊过机器人（但取消代刀正常记录）')
+                if not NOprivate:
+                    try:
+                        if GroupID_ON == True:
+                            await bot.send_private_msg(user_id=int(uid),group_id=int(gid),message=f'您好~代刀手{user_card}({ev.user_id})取消了代刀！')
+                        else:
+                            await bot.send_private_msg(user_id=int(uid), message=f'您好~代刀手{user_card}({ev.user_id})取消了代刀！')
+                        await bot.send(ev, f"{user_card}取消了为{user_card2}的代刀！已私聊通知该用户！")
+                    except:
+                        await bot.finish(ev, f'发送私聊取消代刀消息时发生错误，{user_card2}可能没有私聊过机器人（但取消代刀正常记录）')
+                else:
+                    await bot.send(ev, f"{user_card}取消了为{user_card2}的代刀！")
             else:
                 await bot.finish(ev, f'{user_card2}未在代刀状态！')
 
@@ -914,8 +955,9 @@ async def XXZT(bot, ev: CQEvent):
                     Hour = dai._get_GS_Hour(gid,uid)
                     Min = dai._get_GS_MIN(gid,uid)
                     id = dai._get_GS_id(gid,uid)
+                    ly = dai._get_GS_ly(gid,uid)
                     user = await get_user_card(bot, ev.group_id, id)
-                    score_dict[user_card_dict[uid]] =  [Hour,Min,user]
+                    score_dict[user_card_dict[uid]] =  [Hour,Min,user,ly]
                 else:
                     continue
         group_ranking = sorted(score_dict.items(),key = lambda x:x[1],reverse = True)
@@ -924,9 +966,9 @@ async def XXZT(bot, ev: CQEvent):
         for i in range(len(group_ranking)):
             if group_ranking[i][1] != 0:
                 if group_ranking[i][1][2] != group_ranking[i][0]:
-                    msg4 += f'{i+1}. {group_ranking[i][0]} 挂树开始时间：{group_ranking[i][1][0]} 时{group_ranking[i][1][1]} 分 刀手：{group_ranking[i][1][2]},已挂树{60*(now.hour-int(group_ranking[i][1][0]))+now.minute-int(group_ranking[i][1][1])}分钟\n'
+                    msg4 += f'{i+1}. {group_ranking[i][0]} 挂树开始时间：{group_ranking[i][1][0]} 时{group_ranking[i][1][1]} 分 刀手：{group_ranking[i][1][2]},留言：{group_ranking[i][1][3]},已挂树{60*(now.hour-int(group_ranking[i][1][0]))+now.minute-int(group_ranking[i][1][1])}分钟\n'
                 else:
-                    msg4 += f'{i+1}. {group_ranking[i][0]} 挂树开始时间：{group_ranking[i][1][0]} 时{group_ranking[i][1][1]} 分,已挂树{60*(now.hour-int(group_ranking[i][1][0]))+now.minute-int(group_ranking[i][1][1])}分钟\n'
+                    msg4 += f'{i+1}. {group_ranking[i][0]} 挂树开始时间：{group_ranking[i][1][0]} 时{group_ranking[i][1][1]} 分,留言：{group_ranking[i][1][3]},已挂树{60*(now.hour-int(group_ranking[i][1][0]))+now.minute-int(group_ranking[i][1][1])}分钟\n'
         if msg4 == '当前挂树的有:\n':
             msg4 = '当前没有人挂树\n'
         msg = msg1+msg3+msg4
@@ -946,8 +988,9 @@ async def CHASHU(bot, ev: CQEvent):
                     Hour = dai._get_GS_Hour(gid,uid)
                     Min = dai._get_GS_MIN(gid,uid)
                     id = dai._get_GS_id(gid,uid)
+                    ly = dai._get_GS_ly(gid,uid)
                     user = await get_user_card(bot, ev.group_id, id)
-                    score_dict[user_card_dict[uid]] =  [Hour,Min,user]
+                    score_dict[user_card_dict[uid]] =  [Hour,Min,user,ly]
                 else:
                     continue
         group_ranking = sorted(score_dict.items(),key = lambda x:x[1],reverse = True)
@@ -955,9 +998,9 @@ async def CHASHU(bot, ev: CQEvent):
         for i in range(len(group_ranking)):
             if group_ranking[i][1] != 0:
                 if group_ranking[i][1][2] != group_ranking[i][0]:
-                    msg += f'{i+1}. {group_ranking[i][0]} 挂树开始时间：{group_ranking[i][1][0]} 时{group_ranking[i][1][1]} 分 刀手：{group_ranking[i][1][2]},已挂树{60*(now.hour-int(group_ranking[i][1][0]))+now.minute-int(group_ranking[i][1][1])}分钟\n'
+                    msg += f'{i+1}. {group_ranking[i][0]} 挂树开始时间：{group_ranking[i][1][0]} 时{group_ranking[i][1][1]} 分 刀手：{group_ranking[i][1][2]},留言：{group_ranking[i][1][3]},已挂树{60*(now.hour-int(group_ranking[i][1][0]))+now.minute-int(group_ranking[i][1][1])}分钟\n'
                 else:
-                    msg += f'{i+1}. {group_ranking[i][0]} 挂树开始时间：{group_ranking[i][1][0]} 时{group_ranking[i][1][1]} 分,已挂树{60*(now.hour-int(group_ranking[i][1][0]))+now.minute-int(group_ranking[i][1][1])}分钟\n'
+                    msg += f'{i+1}. {group_ranking[i][0]} 挂树开始时间：{group_ranking[i][1][0]} 时{group_ranking[i][1][1]} 分,留言：{group_ranking[i][1][3]},已挂树{60*(now.hour-int(group_ranking[i][1][0]))+now.minute-int(group_ranking[i][1][1])}分钟\n'
         if msg == '当前挂树的有:\n':
             msg = '当前没有人挂树\n'
         await bot.send(ev, msg.strip())
@@ -1133,16 +1176,15 @@ async def get_dao(gid:str) -> str:
     challenges = data['challenges']
     dao = {}
     members = data['members']
-    print(challenges)
     for member in members:
         dao[member['qqid']] = 0
     for challenge in challenges:
         if challenge['is_continue'] == False:
             num = 1
         else:
-            num = 0
-        if challenge['damage'] == 0:
-            continue
+            num = 0.5
+        if challenge['health_ramain'] == 0:
+            num = 0.5
         if challenge['behalf'] == None or challenge['behalf'] == challenge['qqid']:
             dao[challenge['qqid']] += num
         if challenge['behalf'] != None:
@@ -1179,15 +1221,16 @@ async def get_dai(gid:str) -> str:
 async def cddqk(bot,ev):
     gid = ev.group_id
     dao = await get_dao(gid)
-    dai = await get_dai(gid)
-    # tb = pt.PrettyTable()
-    #  tb.field_names = ["名字", "出刀数", "代刀数", "总出刀"]
-    #  print(tb)
-    # 标题
+    try:
+        dai = await get_dai(gid)
+    except Exception as e:
+      await bot.send(ev, f'生成失败，请检查公会是否有代刀者，{type(e)}')
+      return
     table = HTMLTable(caption='代刀表')
     # 表头行
     table.append_header_rows((
     ("名字", "出刀数", "代刀数", "总出刀"),))
+
     for qq in dao:
         try:
             name = (await bot.get_group_member_info(group_id=ev.group_id,user_id=qq))['nickname']
@@ -1195,6 +1238,7 @@ async def cddqk(bot,ev):
             name = "不在群成员"
         if dao[qq]+dai[qq] != 0:
            table.append_data_rows(((name,str(dao[qq]), str(dai[qq]), str(dao[qq]+dai[qq])),))
+
     table.caption.set_style({
     'font-size': '15px',})
     table.set_style({
@@ -1221,17 +1265,20 @@ async def cddqk(bot,ev):
     table[1].set_cell_style({
     'padding': '8px',
     'font-size': '15px',})
+    
     for row in table.iter_data_rows():
-     introw = int(row[2].value)  
-     if introw > 10: #看看哪些人被代的多
-        row.set_style({
-            'background-color': '#ffdddd',})
+      introw = int(row[2].value)  
+      if introw > 10: #看看哪些人被代的多
+         row.set_style({
+             'background-color': '#ffdddd',})
     body = table.to_html()
     # html的charset='UTF-8'必须加上，否则中午会乱码
     html = "<!DOCTYPE html><html><head><meta charset='UTF-8'></head><body>{0}</body></html>".format(body)
-        #tb.add_row([name,str(dao[qq]), str(dai[qq]), str(dao[qq]+dai[qq])])
+    #tb.add_row([name,str(dao[qq]), str(dai[qq]), str(dao[qq]+dai[qq])])
     imgkit.from_string(html, DAIDAO_jpg_PATH +'out.jpg')
     await bot.send(ev,MessageSegment.image(f'file:///{DAIDAO_jpg_PATH}\\out.jpg'))
+    
+       
 
 @sv.on_prefix(["合刀"])
 async def hedao(bot, ev):
@@ -1247,7 +1294,7 @@ async def hedao(bot, ev):
         boss_HP[gid] = args[2]
     server = str(await get_group_sv(gid))
     if server == 'cn':
-        bz = 10
+        bz = 20
         mode = '国服'
     else:
         bz = 20
@@ -1291,12 +1338,244 @@ async def hedao(bot, ev):
         msg = f"当前BOSS血量为{d}\n这两刀打不死！"
         await bot.send(ev, msg)
         
-@sv.on_prefix(('网页截图')) #软件装都装了不如再加个功能
-async def wyjt(bot, ev: CQEvent):
-    html = ev.message.extract_plain_text().strip()
-    if ("http" in html):
-     imgkit.from_url(html, DAIDAO_jpg_PATH +'html.jpg')
-     time.sleep(5)
-     await bot.send(ev,MessageSegment.image(f'file:///{DAIDAO_jpg_PATH}\\html.jpg'))
-    else:
-     await bot.send(ev, "要以http开头")
+async def get_daotd(gid:str) -> str:
+     apikey = get_apikey(gid)
+     url = f'{yobot_url}clan/{gid}/statistics/api/?apikey={apikey}'
+     session = aiohttp.ClientSession()
+     async with session.get(url) as resp:
+        data = await resp.json()
+     with open(os.path.join(os.path.dirname(__file__),f"data.json"), "w", encoding='utf-8') as f:
+        f.write(json.dumps(data, indent=4,ensure_ascii=False))
+     challenges = data['challenges']
+     #qqid = data['challenges']['qqid']
+     daotd = {}
+     members = data['members']
+     n = '0'
+     n = int(n)
+     daotdu = []#记录补偿刀和完整刀
+     for challenge in challenges:
+        if challenge['challenge_pcrdate'] > n:
+            n = challenge['challenge_pcrdate'] #得出最近一天
+     for member in members:
+       for challenge in challenges:
+          if challenge['challenge_pcrdate'] == n and member['qqid']==challenge['qqid']:
+             cdb = str(challenge['damage'])
+             qqid = str(challenge['qqid'])
+             ic = str(challenge['is_continue'])
+             hr = str(challenge["health_ramain"])
+             cy = str(challenge["cycle"])
+             bn = str(challenge["boss_num"])
+             daotdu.append(cdb)
+             daotdu.append(ic)
+             daotdu.append(hr)
+             daotdu.append(cy)
+             daotdu.append(bn) 
+       daotd[member['qqid']] = daotdu             #得出每个公会成员今日出刀伤害列表/是否为补偿刀/boss剩余血量
+       daotdu = []
+     '''if challenge['is_continue'] == False:
+            num = 1
+        else:
+            num = 0
+        if challenge['damage'] == 0:
+            continue
+        if challenge['behalf'] == None or challenge['behalf'] == challenge['qqid']:
+            dao[challenge['qqid']] += num
+        if challenge['behalf'] != None:
+            continue'''
+     return daotd
+
+@sv.on_fullmatch('进度表')
+async def cddqk(bot,ev):                                                                     
+    gid = ev.group_id
+    dao = await get_daotd(gid)
+    daoz = await get_daoz(gid)
+    daozz = 0
+    for qq in daoz:                                                                          #别问，问就是穷举
+        try:
+            name = (await bot.get_group_member_info(group_id=ev.group_id,user_id=qq))['nickname']
+        except:
+            name = "不在群成员"
+        daozz += daoz[qq]
+    daozs = 90 - daozz
+    table = HTMLTable(caption=f'进度表  已出{daozz}刀,还剩{daozs}刀 建议每期前点开网页“设置”切换档案 power by othinus')
+    table.append_header_rows((
+    ("名字", "第一刀", "第一刀补偿", "第二刀", "第二刀补偿","第三刀","第三刀补偿"),))
+    ta=table.append_header_rows
+    n = 0
+    for qq in dao:                                                                          #别问，问就是穷举
+        try:
+            name = (await bot.get_group_member_info(group_id=ev.group_id,user_id=qq))['nickname']
+        except:
+            name = f'qq{qq}'
+        n+=1
+        if len(dao[qq])==5:        
+           cybs1=f'{str(dao[qq][0])}({str(dao[qq][3])}-{str(dao[qq][4])})'
+        if len(dao[qq])==10:
+           cybs1=f'{str(dao[qq][0])}({str(dao[qq][3])}-{str(dao[qq][4])})'
+           cybs2=f'{str(dao[qq][5])}({str(dao[qq][8])}-{str(dao[qq][9])})'
+        if len(dao[qq])==15:
+           cybs1=f'{str(dao[qq][0])}({str(dao[qq][3])}-{str(dao[qq][4])})'
+           cybs2=f'{str(dao[qq][5])}({str(dao[qq][8])}-{str(dao[qq][9])})'
+           cybs3=f'{str(dao[qq][10])}({str(dao[qq][13])}-{str(dao[qq][14])})'
+        if len(dao[qq])==20:
+           cybs1=f'{str(dao[qq][0])}({str(dao[qq][3])}-{str(dao[qq][4])})'
+           cybs2=f'{str(dao[qq][5])}({str(dao[qq][8])}-{str(dao[qq][9])})'
+           cybs3=f'{str(dao[qq][10])}({str(dao[qq][13])}-{str(dao[qq][14])})'
+           cybs4=f'{str(dao[qq][15])}({str(dao[qq][18])}-{str(dao[qq][19])})'
+        if len(dao[qq])==25:
+           cybs1=f'{str(dao[qq][0])}({str(dao[qq][3])}-{str(dao[qq][4])})'
+           cybs2=f'{str(dao[qq][5])}({str(dao[qq][8])}-{str(dao[qq][9])})'
+           cybs3=f'{str(dao[qq][10])}({str(dao[qq][13])}-{str(dao[qq][14])})'
+           cybs4=f'{str(dao[qq][15])}({str(dao[qq][18])}-{str(dao[qq][19])})'
+           cybs5=f'{str(dao[qq][20])}({str(dao[qq][23])}-{str(dao[qq][24])})'
+        if len(dao[qq])==30:
+           cybs1=f'{str(dao[qq][0])}({str(dao[qq][3])}-{str(dao[qq][4])})'
+           cybs2=f'{str(dao[qq][5])}({str(dao[qq][8])}-{str(dao[qq][9])})'
+           cybs3=f'{str(dao[qq][10])}({str(dao[qq][13])}-{str(dao[qq][14])})'
+           cybs4=f'{str(dao[qq][15])}({str(dao[qq][18])}-{str(dao[qq][19])})'
+           cybs5=f'{str(dao[qq][20])}({str(dao[qq][23])}-{str(dao[qq][24])})'
+           cybs6=f'{str(dao[qq][25])}({str(dao[qq][28])}-{str(dao[qq][29])})'
+        if len(dao[qq])==0:                                                                  #一刀都没出的懒狗
+               ta(((name,'','','','','',''),))
+        if len(dao[qq])==5:                                                                  #共出了一刀
+           if str(dao[qq][2])== '0':                                                         #第一刀是尾刀
+               ta(((name,cybs1,'','','','',''),))
+           else:                                                                             #第一刀是完整刀
+               ta(((name,cybs1,'','','','',''),))
+               table[n][1].attr.colspan = 2
+        if len(dao[qq])==10:                                                                 #共出了两刀
+           if str(dao[qq][2])== '0':                                                         #1尾2补
+               ta(((name,cybs1,cybs2,'','','',''),))
+           else:                                                                             #第一刀是完整刀
+             if str(dao[qq][7])== '0':                                                       #1完2尾
+               ta(((name,cybs1,'',cybs2,'','',''),))
+               table[n][1].attr.colspan = 2
+             else:                                                                           #1完2完
+               ta(((name,cybs1,'',cybs2,'','',''),))
+               table[n][1].attr.colspan = 2
+               table[n][3].attr.colspan = 2
+        if len(dao[qq])==15:                                                                 #共出了三刀
+           if str(dao[qq][2])== '0':
+              if str(dao[qq][12])== '0':                                                     #1尾2补3尾 
+               ta(((name,cybs1,cybs2,cybs3,'','',''),))
+              else:                                                                          #1尾2补3完
+               ta(((name,cybs1,cybs2,cybs3,'','',''),))
+               table[n][3].attr.colspan = 2
+           else:
+              if str(dao[qq][7])== '0':                                                      #1完2尾3补
+                ta(((name,cybs1,'',cybs2,cybs3,'',''),))
+                table[n][1].attr.colspan = 2
+              else:                                                                          #1完2完3尾
+                if str(dao[qq][12])== '0':
+                  ta(((name,cybs1,'',cybs2,'',cybs3,''),))
+                  table[n][1].attr.colspan = 2 
+                  table[n][3].attr.colspan = 2
+                else:                                                                        #1完2完3完
+                  if str(dao[qq][2])!= '0':
+                   ta(((name,cybs1,'',cybs2,'',cybs3,''),))
+                   table[n][1].attr.colspan = 2
+                   table[n][3].attr.colspan = 2
+                   table[n][5].attr.colspan = 2
+        if len(dao[qq])==20:                                                                 #共出了四刀
+           if str(dao[qq][2])== '0':
+              if str(dao[qq][12])== '0':                                                     #1尾2补3尾4补
+               ta(((name,cybs1,cybs2,cybs3,cybs4,'',''),))
+              else: 
+                 if str(dao[qq][17])== '0':                                                  #1尾2补3完4尾
+                   ta(((name,cybs1,cybs2,cybs3,'',cybs4,''),))
+                   table[n][3].attr.colspan = 2
+                 else:                                                                       #1尾2补3完4完
+                     ta(((name,cybs1,cybs2,cybs3,'',cybs4,''),))
+                     table[n][3].attr.colspan = 2
+                     table[n][5].attr.colspan = 2
+           else:
+              if str(dao[qq][7])== '0':                                                      #1完2尾3补4尾
+                 if str(dao[qq][17])== '0':
+                   ta(((name,cybs1,'',cybs2,cybs3,cybs4,''),)) 
+                   table[n][1].attr.colspan = 2
+                 else:                                                                       #1完2尾3补4完
+                   ta(((name,cybs1,'',cybs2,cybs3,cybs4,''),)) 
+                   table[n][1].attr.colspan = 2
+                   table[n][5].attr.colspan = 2
+              else:                                                                          #1完2完3尾4补
+                   ta(((name,cybs1,'',cybs2,'',cybs3,cybs4),))
+                   table[n][1].attr.colspan = 2
+                   table[n][3].attr.colspan = 2
+        if len(dao[qq])==25:                                                                 #共出了五刀
+           if str(dao[qq][22]) == '0' and str(dao[qq][21]) == 'False':                       #1尾2补3尾4补5尾
+                   ta(((name,cybs1,cybs2,cybs3,cybs4,cybs5,''),))
+           if str(dao[qq][22]) != '0' and str(dao[qq][21])== 'False':                        #1尾2补3尾4补5完
+                   ta(((name,cybs1,cybs2,cybs3,cybs4,cybs5,''),))
+                   table[n][5].attr.colspan = 2
+           if str(dao[qq][12])!= '0' and str(dao[qq][11])== 'False':                         #1尾2补3完4尾5补
+                   ta(((name,cybs1,cybs2,cybs3,'',cybs4,cybs5),))
+                   table[n][3].attr.colspan = 2
+           if str(dao[qq][2])!= '0' and str(dao[qq][1])== 'False':                           #1完2尾3补4尾5补
+                   ta(((name,cybs1,'',cybs2,cybs3,cybs4,cybs5),))
+                   table[n][1].attr.colspan = 2
+        if len(dao[qq])==30:                                                                 #1尾2补3尾4补5尾6补
+                   ta(((name,cybs1,cybs2,cybs3,cybs4,cybs5,cybs6),))
+
+    table.caption.set_style({
+    'font-size': '20px',})
+    table.set_style({
+    'border-collapse': 'collapse',
+    'word-break': 'keep-all',
+    'white-space': 'nowrap',
+    'font-size': '20px',
+    'margin':'auto',})
+    table.set_cell_style({
+    'width': '250px',
+    'border-color': '#000',
+    'border-width': '1px',
+    'border-style': 'solid',
+    'font-size': '20px',
+    'align':'center',})
+    table.set_header_row_style({
+    'color': '#fff',
+    'background-color': '#48a6fb',
+    'font-size': '15px',})
+    table.set_header_cell_style({
+    'padding': '15px',})
+
+
+    newdao = ''
+
+    '''table[1].set_cell_style({
+    'padding': '8px',
+    'font-size': '15px',})'''
+    
+    '''for row in table.iter_data_rows():
+      introw = int(row[2].value)  
+      if introw > 10: #看看哪些人被代的多
+         row.set_style({
+             'background-color': '#ffdddd',})'''
+    body = table.to_html()
+    # html的charset='UTF-8'必须加上，否则中午会乱码
+    html = "<!DOCTYPE html><html><head><meta charset='UTF-8'></head><body>{0}</body></html>".format(body)
+    #tb.add_row([name,str(dao[qq]), str(dai[qq]), str(dao[qq]+dai[qq])])
+    imgkit.from_string(html, DAIDAO_jpg_PATH +'out.jpg')
+    await bot.send(ev,MessageSegment.image(f'file:///{DAIDAO_jpg_PATH}\\out.jpg'))
+    
+async def get_daoz(gid:str) -> str:                      #获取一天的刀数
+    with open(os.path.join(os.path.dirname(__file__),f"data.json"), "r", encoding='utf-8') as f:
+        data = json.load(f)
+    challenges = data['challenges']
+    daoz = {}
+    n =0
+    members = data['members']
+    for challenge in challenges:
+        if challenge['challenge_pcrdate'] > n:
+            n = challenge['challenge_pcrdate'] #得出最近一天
+    for member in members:
+        daoz[member['qqid']] = 0
+    for challenge in challenges:
+      if challenge['challenge_pcrdate']==n:
+        if challenge['is_continue'] == False:
+            num = 1
+        else:
+            num = 0.5
+        if challenge['health_ramain'] == 0:
+            num = 0.5
+        daoz[challenge['qqid']] += num
+    return daoz
