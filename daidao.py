@@ -1347,7 +1347,6 @@ async def get_daotd(gid:str) -> str:
      with open(os.path.join(os.path.dirname(__file__),f"data.json"), "w", encoding='utf-8') as f:
         f.write(json.dumps(data, indent=4,ensure_ascii=False))
      challenges = data['challenges']
-     #qqid = data['challenges']['qqid']
      daotd = {}
      members = data['members']
      n = '0'
@@ -1370,34 +1369,24 @@ async def get_daotd(gid:str) -> str:
              daotdu.append(hr)
              daotdu.append(cy)
              daotdu.append(bn) 
-       daotd[member['qqid']] = daotdu             #得出每个公会成员今日出刀伤害列表/是否为补偿刀/boss剩余血量
-       daotdu = []
-     '''if challenge['is_continue'] == False:
-            num = 1
-        else:
-            num = 0
-        if challenge['damage'] == 0:
-            continue
-        if challenge['behalf'] == None or challenge['behalf'] == challenge['qqid']:
-            dao[challenge['qqid']] += num
-        if challenge['behalf'] != None:
-            continue'''
-     return daotd
-
-@sv.on_fullmatch('进度表')
-async def cddqk(bot,ev):                                                                     
+       daotd[member['qqid']] = daotdu             #得出字典下数组：【出刀伤害，是否为补偿刀，boss剩余血量，第几周目，几号boss】
+       daotdu = []                               
+     return daotd                               
+                                              
+@sv.on_fullmatch('进度表')                   
+async def cddqkj(bot,ev):                   #由代刀表魔改而来，思路一致：
     gid = ev.group_id
-    dao = await get_daotd(gid)
-    daoz = await get_daoz(gid)
-    daozz = 0
-    for qq in daoz:                                                                          #别问，问就是穷举
-        try:
+    dao = await get_daotd(gid)             #get_daotd获取json,将原获取的代刀数变成获取数组
+    daoz = await get_daoz(gid)            #get_daoz获取json,获取出刀数计算总出刀
+    daozz = 0                            #然后就是分析数组，靠穷举得出所有出刀可能性
+    for qq in daoz:                     #未来还有可能完善的地方：
+        try:                           #json里member并没有公会里没出刀的人，所以没有这一行，意味着第一天看不到谁一刀没出
             name = (await bot.get_group_member_info(group_id=ev.group_id,user_id=qq))['nickname']
         except:
             name = "不在群成员"
         daozz += daoz[qq]
     daozs = 90 - daozz
-    table = HTMLTable(caption=f'进度表  已出{daozz}刀,还剩{daozs}刀 建议每期前点开网页“设置”切换档案 power by othinus')
+    table = HTMLTable(caption=f'进度表  已出{daozz}刀,还剩{daozs}刀 建议每期公会战前点开网页“设置”切换档案 power by othinus')
     table.append_header_rows((
     ("名字", "第一刀", "第一刀补偿", "第二刀", "第二刀补偿","第三刀","第三刀补偿"),))
     ta=table.append_header_rows
@@ -1539,17 +1528,6 @@ async def cddqk(bot,ev):
     'padding': '15px',})
 
 
-    newdao = ''
-
-    '''table[1].set_cell_style({
-    'padding': '8px',
-    'font-size': '15px',})'''
-    
-    '''for row in table.iter_data_rows():
-      introw = int(row[2].value)  
-      if introw > 10: #看看哪些人被代的多
-         row.set_style({
-             'background-color': '#ffdddd',})'''
     body = table.to_html()
     # html的charset='UTF-8'必须加上，否则中午会乱码
     html = "<!DOCTYPE html><html><head><meta charset='UTF-8'></head><body>{0}</body></html>".format(body)
