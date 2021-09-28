@@ -1371,22 +1371,24 @@ async def get_daotd(gid:str) -> str:
              daotdu.append(bn) 
        daotd[member['qqid']] = daotdu             #得出字典下数组：【出刀伤害，是否为补偿刀，boss剩余血量，第几周目，几号boss】
        daotdu = []                               
-     return daotd                               
+     return daotd                                             
                                               
 @sv.on_fullmatch('进度表')                   
 async def cddqkj(bot,ev):                   #由代刀表魔改而来，思路一致：
     gid = ev.group_id
-    dao = await get_daotd(gid)             #get_daotd获取json,将原获取的代刀数变成获取数组
-    daoz = await get_daoz(gid)            #get_daoz获取json,获取出刀数计算总出刀
-    daozz = 0                            #然后就是分析数组，靠穷举得出所有出刀可能性
-    for qq in daoz:                     #未来还有可能完善的地方：
-        try:                           #json里member并没有公会里没出刀的人，所以没有这一行，意味着第一天看不到谁一刀没出
-            name = (await bot.get_group_member_info(group_id=ev.group_id,user_id=qq))['nickname']
-        except:
-            name = "不在群成员"
-        daozz += daoz[qq]
+    dao = await get_daotd(gid)             #get_daotd获取json,将原获取的代刀数变成获取数组,之后分析数组，靠穷举得出所有出刀可能性
+    daoz = await get_daoz(gid)            #get_daoz再次读取上面获取的json,获取数组包括(当前周目,boss,剩余血量,总刀数)
+    c = daoz[0]                          #未来还有可能完善的地方：json里member并没有公会里没出刀的人，所以没有这一行，意味着第一天看不到谁一刀没出
+    b = daoz[1]  
+    h = daoz[2]  
+    daozz = daoz[3]                           
     daozs = 90 - daozz
-    table = HTMLTable(caption=f'进度表  已出{daozz}刀,还剩{daozs}刀 建议每期公会战前点开网页“设置”切换档案 power by othinus')
+    if b == 1:hz=6000000
+    if b == 2:hz=8000000
+    if b == 3:hz=10000000
+    if b == 4:hz=12000000
+    if b == 5:hz=15000000 #(一二三四五王血量,未来再想办法直接获取yobot的设置,这样不用设置两次)
+    table = HTMLTable(caption=f'进度表(内测中) 有问题反馈维护组有奖励  已出{daozz}刀,还剩{daozs}刀 当前状态{c}-{b}-({h}/{hz}) 指令"提醒未出刀"内测中')
     table.append_header_rows((
     ("名字", "第一刀", "", "第二刀", "","第三刀",""),))
     table[0][1].attr.colspan = 2
@@ -1477,7 +1479,6 @@ async def cddqkj(bot,ev):                   #由代刀表魔改而来，思路�
                   table[n][1].attr.colspan = 2 
                   table[n][3].attr.colspan = 2
                 else:                                                                        #1完2完3完
-                  if str(dao[qq][2])!= '0':
                    ta(((name,cybs1,'',cybs2,'',cybs3,''),))
                    table[n][1].attr.colspan = 2
                    table[n][3].attr.colspan = 2
@@ -1553,12 +1554,18 @@ async def cddqkj(bot,ev):                   #由代刀表魔改而来，思路�
     imgkit.from_string(html, DAIDAO_jpg_PATH +'out.jpg')
     await bot.send(ev,MessageSegment.image(f'file:///{DAIDAO_jpg_PATH}\\out.jpg'))
     
-async def get_daoz(gid:str) -> str:                      #获取一天的刀数
+async def get_daoz(gid:str) -> str:                  
     with open(os.path.join(os.path.dirname(__file__),f"data.json"), "r", encoding='utf-8') as f:
         data = json.load(f)
     challenges = data['challenges']
-    daoz = {}
-    n =0
+    Zhou = data["challenges"][-1]["cycle"]  # 获取Boss周目
+    daoz = {}  #提取每人刀数
+    shuju = []#返一个数组回去包括(周目,boss,剩余血量,总刀数）,一次性调用完
+    n =0   #天
+    c = data["challenges"][-1]["cycle"]          #周目
+    b = data["challenges"][-1]["boss_num"]       #boss
+    h = data["challenges"][-1]["health_ramain"]  #剩余血量
+    daozz = 0                                    #当天总刀数
     members = data['members']
     for challenge in challenges:
         if challenge['challenge_pcrdate'] > n:
@@ -1574,4 +1581,49 @@ async def get_daoz(gid:str) -> str:                      #获取一天的刀数
         if challenge['health_ramain'] == 0:
             num = 0.5
         daoz[challenge['qqid']] += num
-    return daoz
+    for qq in daoz:                     #未来还有可能完善的地方
+        daozz += daoz[qq]
+    shuju.append(c)
+    shuju.append(b)
+    shuju.append(h)
+    shuju.append(daozz)
+    return shuju
+
+@sv.on_fullmatch('提醒未出刀')                   
+async def txwcd(bot,ev):                   #由代刀表魔改而来，思路一致：
+    gid = ev.group_id
+    if not hoshino.priv.check_priv(ev, hoshino.priv.ADMIN) or not hoshino.priv.check_priv(ev, hoshino.priv.OWNER):
+        await bot.send(ev,message = '仅限管理可用',at_sender = True)
+        return
+    dao = await get_daotd(gid) 
+    
+    msgTX = "未出完刀的来出刀了:\n"
+    for qq in dao:                                                                          #别问，问就是穷举
+        try:
+            name = (await bot.get_group_member_info(group_id=ev.group_id,user_id=qq))['nickname']
+        except:
+            name = f'qq{qq}'
+            continue
+        if len(dao[qq])==0:
+           msgTX += f"[CQ:at,qq={qq}]"            
+        if len(dao[qq])==5:
+           msgTX += f"[CQ:at,qq={qq}]"    
+        if len(dao[qq])==10:
+           msgTX += f"[CQ:at,qq={qq}]" 
+        if len(dao[qq])==15:
+          if str(dao[qq][2])!= '0'and str(dao[qq][7])!= '0' and str(dao[qq][12])!= '0':
+             msg =''
+          else:
+                msgTX += f"[CQ:at,qq={qq}]"
+        if len(dao[qq])==20:
+          if str(dao[qq][2])!= '0'and str(dao[qq][7])!= '0':
+             msgTX += f"[CQ:at,qq={qq}]"
+          if str(dao[qq][2])== '0'and str(dao[qq][7])!= '0' and str(dao[qq][17])!= '0':
+             msgTX += f"[CQ:at,qq={qq}]"
+          if str(dao[qq][2])!= '0'and str(dao[qq][7])== '0' and str(dao[qq][12])!= '0':
+             msgTX += f"[CQ:at,qq={qq}]"             
+        if len(dao[qq])==25:
+          if str(dao[qq][22]) == '0' and str(dao[qq][21]) == 'False': 
+             msgTX += f"[CQ:at,qq={qq}]"
+    msgTX += f"\n（目前需要档案内至少出一刀）"
+    await bot.send(ev, msgTX)
