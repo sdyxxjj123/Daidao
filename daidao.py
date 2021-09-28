@@ -1388,7 +1388,10 @@ async def cddqkj(bot,ev):                   #由代刀表魔改而来，思路�
     daozs = 90 - daozz
     table = HTMLTable(caption=f'进度表  已出{daozz}刀,还剩{daozs}刀 建议每期公会战前点开网页“设置”切换档案 power by othinus')
     table.append_header_rows((
-    ("名字", "第一刀", "第一刀补偿", "第二刀", "第二刀补偿","第三刀","第三刀补偿"),))
+    ("名字", "第一刀", "", "第二刀", "","第三刀",""),))
+    table[0][1].attr.colspan = 2
+    table[0][3].attr.colspan = 2
+    table[0][5].attr.colspan = 2
     ta=table.append_header_rows
     n = 0
     for qq in dao:                                                                          #别问，问就是穷举
@@ -1426,34 +1429,48 @@ async def cddqkj(bot,ev):                   #由代刀表魔改而来，思路�
            cybs6=f'{str(dao[qq][25])}({str(dao[qq][28])}-{str(dao[qq][29])})'
         if len(dao[qq])==0:                                                                  #一刀都没出的懒狗
                ta(((name,'','','','','',''),))
+               table[n][1].attr.colspan = 2
+               table[n][3].attr.colspan = 2
+               table[n][5].attr.colspan = 2
         if len(dao[qq])==5:                                                                  #共出了一刀
            if str(dao[qq][2])== '0':                                                         #第一刀是尾刀
                ta(((name,cybs1,'','','','',''),))
+               table[n][3].attr.colspan = 2
+               table[n][5].attr.colspan = 2
            else:                                                                             #第一刀是完整刀
                ta(((name,cybs1,'','','','',''),))
                table[n][1].attr.colspan = 2
+               table[n][3].attr.colspan = 2
+               table[n][5].attr.colspan = 2
         if len(dao[qq])==10:                                                                 #共出了两刀
            if str(dao[qq][2])== '0':                                                         #1尾2补
                ta(((name,cybs1,cybs2,'','','',''),))
+               table[n][3].attr.colspan = 2
+               table[n][5].attr.colspan = 2
            else:                                                                             #第一刀是完整刀
              if str(dao[qq][7])== '0':                                                       #1完2尾
                ta(((name,cybs1,'',cybs2,'','',''),))
                table[n][1].attr.colspan = 2
+               table[n][5].attr.colspan = 2
              else:                                                                           #1完2完
                ta(((name,cybs1,'',cybs2,'','',''),))
                table[n][1].attr.colspan = 2
                table[n][3].attr.colspan = 2
+               table[n][5].attr.colspan = 2
         if len(dao[qq])==15:                                                                 #共出了三刀
            if str(dao[qq][2])== '0':
               if str(dao[qq][12])== '0':                                                     #1尾2补3尾 
                ta(((name,cybs1,cybs2,cybs3,'','',''),))
+               table[n][5].attr.colspan = 2
               else:                                                                          #1尾2补3完
                ta(((name,cybs1,cybs2,cybs3,'','',''),))
                table[n][3].attr.colspan = 2
+               table[n][5].attr.colspan = 2
            else:
               if str(dao[qq][7])== '0':                                                      #1完2尾3补
                 ta(((name,cybs1,'',cybs2,cybs3,'',''),))
                 table[n][1].attr.colspan = 2
+                table[n][5].attr.colspan = 2
               else:                                                                          #1完2完3尾
                 if str(dao[qq][12])== '0':
                   ta(((name,cybs1,'',cybs2,'',cybs3,''),))
@@ -1469,6 +1486,7 @@ async def cddqkj(bot,ev):                   #由代刀表魔改而来，思路�
            if str(dao[qq][2])== '0':
               if str(dao[qq][12])== '0':                                                     #1尾2补3尾4补
                ta(((name,cybs1,cybs2,cybs3,cybs4,'',''),))
+               table[n][5].attr.colspan = 2
               else: 
                  if str(dao[qq][17])== '0':                                                  #1尾2补3完4尾
                    ta(((name,cybs1,cybs2,cybs3,'',cybs4,''),))
@@ -1522,7 +1540,7 @@ async def cddqkj(bot,ev):                   #由代刀表魔改而来，思路�
     'align':'center',})
     table.set_header_row_style({
     'color': '#fff',
-    'background-color': '#48a6fb',
+    'background-color': '#48a6fb',https://github.com/othinus001/Daidao/blob/master/daidao.py
     'font-size': '15px',})
     table.set_header_cell_style({
     'padding': '15px',})
