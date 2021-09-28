@@ -1540,7 +1540,7 @@ async def cddqkj(bot,ev):                   #由代刀表魔改而来，思路�
     'align':'center',})
     table.set_header_row_style({
     'color': '#fff',
-    'background-color': '#48a6fb',https://github.com/othinus001/Daidao/blob/master/daidao.py
+    'background-color': '#48a6fb',
     'font-size': '15px',})
     table.set_header_cell_style({
     'padding': '15px',})
