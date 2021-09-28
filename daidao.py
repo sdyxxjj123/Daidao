@@ -1616,12 +1616,11 @@ async def txwcd(bot,ev):                   #由代刀表魔改而来，思路一
           else:
                 msgTX += f"[CQ:at,qq={qq}]"
         if len(dao[qq])==20:
-          if str(dao[qq][2])!= '0'and str(dao[qq][7])!= '0':
-             msgTX += f"[CQ:at,qq={qq}]"
-          if str(dao[qq][2])== '0'and str(dao[qq][7])!= '0' and str(dao[qq][17])!= '0':
-             msgTX += f"[CQ:at,qq={qq}]"
-          if str(dao[qq][2])!= '0'and str(dao[qq][7])== '0' and str(dao[qq][12])!= '0':
-             msgTX += f"[CQ:at,qq={qq}]"             
+          if str(dao[qq][2])!= '0'and str(dao[qq][7])!= '0': msg =''
+          elif str(dao[qq][2])== '0'and str(dao[qq][7])!= '0' and str(dao[qq][17])!= '0': msg =''
+          elif str(dao[qq][2])!= '0'and str(dao[qq][7])== '0' and str(dao[qq][17])!= '0': msg =''
+          else:
+             msgTX += f"[CQ:at,qq={qq}]"          
         if len(dao[qq])==25:
           if str(dao[qq][22]) == '0' and str(dao[qq][21]) == 'False': 
              msgTX += f"[CQ:at,qq={qq}]"
