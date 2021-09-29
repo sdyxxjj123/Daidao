@@ -1233,7 +1233,8 @@ async def cddqk(bot,ev):
 
     for qq in dao:
         try:
-            name = (await bot.get_group_member_info(group_id=ev.group_id,user_id=qq))['nickname']
+            name = (await bot.get_group_member_info(group_id=ev.group_id,user_id=qq))['card']
+            if name == '':name = (await bot.get_group_member_info(group_id=ev.group_id,user_id=qq))['nickname']
         except:
             name = "不在群成员"
         if dao[qq]+dai[qq] != 0:
@@ -1398,7 +1399,8 @@ async def cddqkj(bot,ev):                   #由代刀表魔改而来，思路�
     n = 0
     for qq in dao:                                                                          #别问，问就是穷举
         try:
-            name = (await bot.get_group_member_info(group_id=ev.group_id,user_id=qq))['nickname']
+            name = (await bot.get_group_member_info(group_id=ev.group_id,user_id=qq))['card']
+            if name == '':name = (await bot.get_group_member_info(group_id=ev.group_id,user_id=qq))['nickname']
         except:
             name = f'qq{qq}'
         n+=1
