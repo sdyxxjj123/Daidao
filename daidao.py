@@ -1205,6 +1205,7 @@ async def get_dai(gid:str) -> str:
     for member in members:
         dai[member['qqid']] = 0
     for challenge in challenges:
+       try:
         if challenge['is_continue'] == False:
             num = 1
         else:
@@ -1215,6 +1216,10 @@ async def get_dai(gid:str) -> str:
             continue
         if challenge['behalf'] != None and challenge['behalf'] != challenge['qqid']:
             dai[challenge['behalf']] += num
+       except:
+            dai[challenge['behalf']] = 0
+            dai[challenge['behalf']] += num
+       
     return dai
 
 @sv.on_fullmatch('代刀表')
@@ -1280,7 +1285,6 @@ async def cddqk(bot,ev):
     await bot.send(ev,MessageSegment.image(f'file:///{DAIDAO_jpg_PATH}\\out.jpg'))
     
        
-
 @sv.on_prefix(["合刀"])
 async def hedao(bot, ev):
     args = ev.message.extract_plain_text().split()
