@@ -1167,7 +1167,7 @@ async def checkupdate():
 
 async def get_dao(gid:str) -> str:
     apikey = get_apikey(gid)
-    url = f'{yobot_url}clan/{gid}/statistics/api/?apikey={apikey}'
+    url = f'{yobot_url}clan/{gid}/daidao/api/?apikey={apikey}'
     session = aiohttp.ClientSession()
     async with session.get(url) as resp:
         data = await resp.json()
@@ -1186,14 +1186,18 @@ async def get_dao(gid:str) -> str:
         if challenge['health_ramain'] == 0:
             num = 0.5
         if challenge['behalf'] == None or challenge['behalf'] == challenge['qqid']:
+         try:
             dao[challenge['qqid']] += num
+         except:
+           dao[challenge['qqid']] = 0
+           dao[challenge['qqid']] += num
         if challenge['behalf'] != None:
             continue
     return dao
 
 async def get_dai(gid:str) -> str:
     apikey = get_apikey(gid)
-    url = f'{yobot_url}clan/{gid}/statistics/api/?apikey={apikey}'
+    url = f'{yobot_url}clan/{gid}/daidao/api/?apikey={apikey}'
     session = aiohttp.ClientSession()
     async with session.get(url) as resp:
         data = await resp.json()
@@ -1205,7 +1209,6 @@ async def get_dai(gid:str) -> str:
     for member in members:
         dai[member['qqid']] = 0
     for challenge in challenges:
-       try:
         if challenge['is_continue'] == False:
             num = 1
         else:
@@ -1215,11 +1218,11 @@ async def get_dai(gid:str) -> str:
         if challenge['behalf'] == None:
             continue
         if challenge['behalf'] != None and challenge['behalf'] != challenge['qqid']:
+          try:
             dai[challenge['behalf']] += num
-       except:
+          except:
             dai[challenge['behalf']] = 0
             dai[challenge['behalf']] += num
-       
     return dai
 
 @sv.on_fullmatch('代刀表')
@@ -1236,15 +1239,20 @@ async def cddqk(bot,ev):
     table.append_header_rows((
     ("名字", "出刀数", "代刀数", "总出刀"),))
 
-    for qq in dao:
+    for qq in dai:
         try:
             name = (await bot.get_group_member_info(group_id=ev.group_id,user_id=qq))['card']
             if name == '':name = (await bot.get_group_member_info(group_id=ev.group_id,user_id=qq))['nickname']
         except:
             name = "不在群成员"
-        if dao[qq]+dai[qq] != 0:
-           table.append_data_rows(((name,str(dao[qq]), str(dai[qq]), str(dao[qq]+dai[qq])),))
-
+        if qq in dao:
+           a=dao[qq]+dai[qq]
+           if a != 0:
+            table.append_data_rows(((name,str(dao[qq]), str(dai[qq]), str(dao[qq]+dai[qq])),))
+        else:
+           a=dai[qq]
+           if a != 0:
+            table.append_data_rows(((name,'0', str(dai[qq]), str(dai[qq])),))
     table.caption.set_style({
     'font-size': '15px',})
     table.set_style({
@@ -1285,6 +1293,7 @@ async def cddqk(bot,ev):
     await bot.send(ev,MessageSegment.image(f'file:///{DAIDAO_jpg_PATH}\\out.jpg'))
     
        
+
 @sv.on_prefix(["合刀"])
 async def hedao(bot, ev):
     args = ev.message.extract_plain_text().split()
@@ -1345,7 +1354,8 @@ async def hedao(bot, ev):
         
 async def get_daotd(gid:str) -> str:
      apikey = get_apikey(gid)
-     url = f'{yobot_url}clan/{gid}/statistics/api/?apikey={apikey}'
+     url = f'{yobot_url}clan/{gid}/daidao/api/?apikey={apikey}'
+     print(apikey)
      session = aiohttp.ClientSession()
      async with session.get(url) as resp:
         data = await resp.json()
@@ -1353,16 +1363,23 @@ async def get_daotd(gid:str) -> str:
         f.write(json.dumps(data, indent=4,ensure_ascii=False))
      challenges = data['challenges']
      daotd = {}
+     daote = {}
      members = data['members']
      n = '0'
+     daots = '0'
      n = int(n)
      daotdu = []#记录补偿刀和完整刀
+     daotds = [] 
+     sl=False
      for challenge in challenges:
         if challenge['challenge_pcrdate'] > n:
             n = challenge['challenge_pcrdate'] #得出最近一天
      for member in members:
+       daote[member['qqid']] = 0
        for challenge in challenges:
-          if challenge['challenge_pcrdate'] == n and member['qqid']==challenge['qqid']:
+          try:                                 #这里利用daote，再tryexcept找出出了刀被踢出公会(buyi)的人
+           daote[challenge['qqid']] += 1
+           if challenge['challenge_pcrdate'] == n and member['qqid']==challenge['qqid']:
              cdb = str(challenge['damage'])
              qqid = str(challenge['qqid'])
              ic = str(challenge['is_continue'])
@@ -1374,8 +1391,30 @@ async def get_daotd(gid:str) -> str:
              daotdu.append(hr)
              daotdu.append(cy)
              daotdu.append(bn) 
+          except:
+           if challenge['challenge_pcrdate'] == n:
+             cdb = str(challenge['damage'])
+             qqid = str(challenge['qqid'])
+             ic = str(challenge['is_continue'])
+             hr = str(challenge["health_ramain"])
+             cy = str(challenge["cycle"])
+             bn = str(challenge["boss_num"])
+             daotds.append(cdb)
+             daotds.append(ic)
+             daotds.append(hr)
+             daotds.append(cy)
+             daotds.append(bn)
+             daots =challenge['qqid']             
+       if member['sl']==n:sl=True
+       daotdu.append(sl) 
        daotd[member['qqid']] = daotdu             #得出字典下数组：【出刀伤害，是否为补偿刀，boss剩余血量，第几周目，几号boss】
-       daotdu = []                               
+       if daots!='0':
+        daotd[daots] = daotds   
+       daotdu = [] 
+       daotds = []
+       daots ='0'  
+       sl=False        
+       
      return daotd                                             
                                               
 @sv.on_fullmatch('进度表')                   
@@ -1393,9 +1432,10 @@ async def cddqkj(bot,ev):                   #由代刀表魔改而来，思路�
     if b == 3:hz=10000000
     if b == 4:hz=12000000
     if b == 5:hz=15000000 #(一二三四五王血量,未来再想办法直接获取yobot的设置,这样不用设置两次)
+    sl=''
     table = HTMLTable(caption=f'进度表(内测中) 有问题反馈维护组有奖励  已出{daozz}刀,还剩{daozs}刀 当前状态{c}-{b}-({h}/{hz}) 指令"提醒未出刀"内测中')
     table.append_header_rows((
-    ("名字", "第一刀", "", "第二刀", "","第三刀",""),))
+    ("名字", "第一刀", "", "第二刀", "","第三刀","","是否sl"),))
     table[0][1].attr.colspan = 2
     table[0][3].attr.colspan = 2
     table[0][5].attr.colspan = 2
@@ -1408,127 +1448,142 @@ async def cddqkj(bot,ev):                   #由代刀表魔改而来，思路�
         except:
             name = f'qq{qq}'
         n+=1
-        if len(dao[qq])==5:        
+        if len(dao[qq])==6:        
            cybs1=f'{str(dao[qq][0])}({str(dao[qq][3])}-{str(dao[qq][4])})'
-        if len(dao[qq])==10:
+           if dao[qq][5]==False:sl=''
+           if dao[qq][5]==True:sl='用掉了'
+        if len(dao[qq])==11:
            cybs1=f'{str(dao[qq][0])}({str(dao[qq][3])}-{str(dao[qq][4])})'
            cybs2=f'{str(dao[qq][5])}({str(dao[qq][8])}-{str(dao[qq][9])})'
-        if len(dao[qq])==15:
+           if dao[qq][10]==False:sl=''
+           if dao[qq][10]==True:sl='用掉了'
+        if len(dao[qq])==16:
            cybs1=f'{str(dao[qq][0])}({str(dao[qq][3])}-{str(dao[qq][4])})'
            cybs2=f'{str(dao[qq][5])}({str(dao[qq][8])}-{str(dao[qq][9])})'
            cybs3=f'{str(dao[qq][10])}({str(dao[qq][13])}-{str(dao[qq][14])})'
-        if len(dao[qq])==20:
+           if dao[qq][15]==False:sl=''
+           if dao[qq][15]==True:sl='用掉了'
+        if len(dao[qq])==21:
            cybs1=f'{str(dao[qq][0])}({str(dao[qq][3])}-{str(dao[qq][4])})'
            cybs2=f'{str(dao[qq][5])}({str(dao[qq][8])}-{str(dao[qq][9])})'
            cybs3=f'{str(dao[qq][10])}({str(dao[qq][13])}-{str(dao[qq][14])})'
            cybs4=f'{str(dao[qq][15])}({str(dao[qq][18])}-{str(dao[qq][19])})'
-        if len(dao[qq])==25:
+           if dao[qq][20]==False:sl=''
+           if dao[qq][20]==True:sl='用掉了'
+        if len(dao[qq])==26:
            cybs1=f'{str(dao[qq][0])}({str(dao[qq][3])}-{str(dao[qq][4])})'
            cybs2=f'{str(dao[qq][5])}({str(dao[qq][8])}-{str(dao[qq][9])})'
            cybs3=f'{str(dao[qq][10])}({str(dao[qq][13])}-{str(dao[qq][14])})'
            cybs4=f'{str(dao[qq][15])}({str(dao[qq][18])}-{str(dao[qq][19])})'
            cybs5=f'{str(dao[qq][20])}({str(dao[qq][23])}-{str(dao[qq][24])})'
-        if len(dao[qq])==30:
+           if dao[qq][25]==False:sl=''
+           if dao[qq][25]==True:sl='用掉了'
+        if len(dao[qq])==31:
            cybs1=f'{str(dao[qq][0])}({str(dao[qq][3])}-{str(dao[qq][4])})'
            cybs2=f'{str(dao[qq][5])}({str(dao[qq][8])}-{str(dao[qq][9])})'
            cybs3=f'{str(dao[qq][10])}({str(dao[qq][13])}-{str(dao[qq][14])})'
            cybs4=f'{str(dao[qq][15])}({str(dao[qq][18])}-{str(dao[qq][19])})'
            cybs5=f'{str(dao[qq][20])}({str(dao[qq][23])}-{str(dao[qq][24])})'
            cybs6=f'{str(dao[qq][25])}({str(dao[qq][28])}-{str(dao[qq][29])})'
-        if len(dao[qq])==0:                                                                  #一刀都没出的懒狗
-               ta(((name,'','','','','',''),))
-               table[n][1].attr.colspan = 2
-               table[n][3].attr.colspan = 2
-               table[n][5].attr.colspan = 2
-        if len(dao[qq])==5:                                                                  #共出了一刀
+           if dao[qq][30]==False:sl=''
+           if dao[qq][30]==True:sl='用掉了'
+        if len(dao[qq])==1:                                                                  #一刀都没出的懒狗
+           if dao[qq][0]==False:sl=''
+           if dao[qq][0]==True:sl='用掉了'
+           ta(((name,'','','','','','',sl),))
+           table[n][1].attr.colspan = 2
+           table[n][3].attr.colspan = 2
+           table[n][5].attr.colspan = 2
+
+        if len(dao[qq])==6:                                                                  #共出了一刀
            if str(dao[qq][2])== '0':                                                         #第一刀是尾刀
-               ta(((name,cybs1,'','','','',''),))
+               ta(((name,cybs1,'','','','','',sl),))
                table[n][3].attr.colspan = 2
                table[n][5].attr.colspan = 2
            else:                                                                             #第一刀是完整刀
-               ta(((name,cybs1,'','','','',''),))
+               ta(((name,cybs1,'','','','','',sl),))
                table[n][1].attr.colspan = 2
                table[n][3].attr.colspan = 2
                table[n][5].attr.colspan = 2
-        if len(dao[qq])==10:                                                                 #共出了两刀
+        if len(dao[qq])==11:                                                                 #共出了两刀
            if str(dao[qq][2])== '0':                                                         #1尾2补
-               ta(((name,cybs1,cybs2,'','','',''),))
+               ta(((name,cybs1,cybs2,'','','','',sl),))
                table[n][3].attr.colspan = 2
                table[n][5].attr.colspan = 2
            else:                                                                             #第一刀是完整刀
              if str(dao[qq][7])== '0':                                                       #1完2尾
-               ta(((name,cybs1,'',cybs2,'','',''),))
+               ta(((name,cybs1,'',cybs2,'','','',sl),))
                table[n][1].attr.colspan = 2
                table[n][5].attr.colspan = 2
              else:                                                                           #1完2完
-               ta(((name,cybs1,'',cybs2,'','',''),))
+               ta(((name,cybs1,'',cybs2,'','','',sl),))
                table[n][1].attr.colspan = 2
                table[n][3].attr.colspan = 2
                table[n][5].attr.colspan = 2
-        if len(dao[qq])==15:                                                                 #共出了三刀
+        if len(dao[qq])==16:                                                                 #共出了三刀
            if str(dao[qq][2])== '0':
               if str(dao[qq][12])== '0':                                                     #1尾2补3尾 
-               ta(((name,cybs1,cybs2,cybs3,'','',''),))
+               ta(((name,cybs1,cybs2,cybs3,'','','',sl),))
                table[n][5].attr.colspan = 2
               else:                                                                          #1尾2补3完
-               ta(((name,cybs1,cybs2,cybs3,'','',''),))
+               ta(((name,cybs1,cybs2,cybs3,'','','',sl),))
                table[n][3].attr.colspan = 2
                table[n][5].attr.colspan = 2
            else:
               if str(dao[qq][7])== '0':                                                      #1完2尾3补
-                ta(((name,cybs1,'',cybs2,cybs3,'',''),))
+                ta(((name,cybs1,'',cybs2,cybs3,'','',sl),))
                 table[n][1].attr.colspan = 2
                 table[n][5].attr.colspan = 2
               else:                                                                          #1完2完3尾
                 if str(dao[qq][12])== '0':
-                  ta(((name,cybs1,'',cybs2,'',cybs3,''),))
+                  ta(((name,cybs1,'',cybs2,'',cybs3,'',sl),))
                   table[n][1].attr.colspan = 2 
                   table[n][3].attr.colspan = 2
                 else:                                                                        #1完2完3完
-                   ta(((name,cybs1,'',cybs2,'',cybs3,''),))
+                   ta(((name,cybs1,'',cybs2,'',cybs3,'',sl),))
                    table[n][1].attr.colspan = 2
                    table[n][3].attr.colspan = 2
                    table[n][5].attr.colspan = 2
-        if len(dao[qq])==20:                                                                 #共出了四刀
+        if len(dao[qq])==21:                                                                 #共出了四刀
            if str(dao[qq][2])== '0':
               if str(dao[qq][12])== '0':                                                     #1尾2补3尾4补
-               ta(((name,cybs1,cybs2,cybs3,cybs4,'',''),))
+               ta(((name,cybs1,cybs2,cybs3,cybs4,'','',sl),))
                table[n][5].attr.colspan = 2
               else: 
                  if str(dao[qq][17])== '0':                                                  #1尾2补3完4尾
-                   ta(((name,cybs1,cybs2,cybs3,'',cybs4,''),))
+                   ta(((name,cybs1,cybs2,cybs3,'',cybs4,'',sl),))
                    table[n][3].attr.colspan = 2
                  else:                                                                       #1尾2补3完4完
-                     ta(((name,cybs1,cybs2,cybs3,'',cybs4,''),))
+                     ta(((name,cybs1,cybs2,cybs3,'',cybs4,'',sl),))
                      table[n][3].attr.colspan = 2
                      table[n][5].attr.colspan = 2
            else:
               if str(dao[qq][7])== '0':                                                      #1完2尾3补4尾
                  if str(dao[qq][17])== '0':
-                   ta(((name,cybs1,'',cybs2,cybs3,cybs4,''),)) 
+                   ta(((name,cybs1,'',cybs2,cybs3,cybs4,'',sl),)) 
                    table[n][1].attr.colspan = 2
                  else:                                                                       #1完2尾3补4完
-                   ta(((name,cybs1,'',cybs2,cybs3,cybs4,''),)) 
+                   ta(((name,cybs1,'',cybs2,cybs3,cybs4,'',sl),)) 
                    table[n][1].attr.colspan = 2
                    table[n][5].attr.colspan = 2
               else:                                                                          #1完2完3尾4补
-                   ta(((name,cybs1,'',cybs2,'',cybs3,cybs4),))
+                   ta(((name,cybs1,'',cybs2,'',cybs3,cybs4,sl),))
                    table[n][1].attr.colspan = 2
                    table[n][3].attr.colspan = 2
-        if len(dao[qq])==25:                                                                 #共出了五刀
+        if len(dao[qq])==26:                                                                 #共出了五刀
            if str(dao[qq][22]) == '0' and str(dao[qq][21]) == 'False':                       #1尾2补3尾4补5尾
-                   ta(((name,cybs1,cybs2,cybs3,cybs4,cybs5,''),))
+                   ta(((name,cybs1,cybs2,cybs3,cybs4,cybs5,'',sl),))
            if str(dao[qq][22]) != '0' and str(dao[qq][21])== 'False':                        #1尾2补3尾4补5完
-                   ta(((name,cybs1,cybs2,cybs3,cybs4,cybs5,''),))
+                   ta(((name,cybs1,cybs2,cybs3,cybs4,cybs5,'',sl),))
                    table[n][5].attr.colspan = 2
            if str(dao[qq][12])!= '0' and str(dao[qq][11])== 'False':                         #1尾2补3完4尾5补
-                   ta(((name,cybs1,cybs2,cybs3,'',cybs4,cybs5),))
+                   ta(((name,cybs1,cybs2,cybs3,'',cybs4,cybs5,sl),))
                    table[n][3].attr.colspan = 2
            if str(dao[qq][2])!= '0' and str(dao[qq][1])== 'False':                           #1完2尾3补4尾5补
-                   ta(((name,cybs1,'',cybs2,cybs3,cybs4,cybs5),))
+                   ta(((name,cybs1,'',cybs2,cybs3,cybs4,cybs5,sl),))
                    table[n][1].attr.colspan = 2
-        if len(dao[qq])==30:                                                                 #1尾2补3尾4补5尾6补
-                   ta(((name,cybs1,cybs2,cybs3,cybs4,cybs5,cybs6),))
+        if len(dao[qq])==31:                                                                 #1尾2补3尾4补5尾6补
+                   ta(((name,cybs1,cybs2,cybs3,cybs4,cybs5,cybs6,sl),))
 
     table.caption.set_style({
     'font-size': '20px',})
@@ -1577,16 +1632,20 @@ async def get_daoz(gid:str) -> str:
         if challenge['challenge_pcrdate'] > n:
             n = challenge['challenge_pcrdate'] #得出最近一天
     for member in members:
-        daoz[member['qqid']] = 0
-    for challenge in challenges:
+           daoz[member['qqid']] = 0
+    for challenge in challenges:              #有一种情况暂不考虑：出了刀后踢出公会
       if challenge['challenge_pcrdate']==n:
         if challenge['is_continue'] == False:
             num = 1
         else:
             num = 0.5
         if challenge['health_ramain'] == 0:
-            num = 0.5
-        daoz[challenge['qqid']] += num
+            num = 0.
+        try:           
+           daoz[challenge['qqid']] += num
+        except:
+           daoz[challenge['qqid']]=0
+           daoz[challenge['qqid']] += num     #排除一种情况：出刀后被踢了
     for qq in daoz:                     #未来还有可能完善的地方
         daozz += daoz[qq]
     shuju.append(c)
@@ -1598,7 +1657,7 @@ async def get_daoz(gid:str) -> str:
 @sv.on_fullmatch('提醒未出刀')                   
 async def txwcd(bot,ev):                   #由代刀表魔改而来，思路一致：
     gid = ev.group_id
-    if not hoshino.priv.check_priv(ev, hoshino.priv.ADMIN) or not hoshino.priv.check_priv(ev, hoshino.priv.OWNER):
+    if not hoshino.priv.check_priv(ev, hoshino.priv.ADMIN):
         await bot.send(ev,message = '仅限管理可用',at_sender = True)
         return
     dao = await get_daotd(gid) 
