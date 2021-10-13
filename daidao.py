@@ -1433,7 +1433,7 @@ async def cddqkj(bot,ev):                   #由代刀表魔改而来，思路�
     if b == 4:hz=12000000
     if b == 5:hz=15000000 #(一二三四五王血量,未来再想办法直接获取yobot的设置,这样不用设置两次)
     sl=''
-    table = HTMLTable(caption=f'进度表(内测中) 有问题反馈维护组有奖励  已出{daozz}刀,还剩{daozs}刀 当前状态{c}-{b}-({h}/{hz}) 指令"提醒未出刀"内测中')
+    table = HTMLTable(caption=f'进度表 已出{daozz}刀,还剩{daozs}刀 当前状态{c}-{b}-({h}/{hz}) 指令"提醒未出刀"内测中')
     table.append_header_rows((
     ("名字", "第一刀", "", "第二刀", "","第三刀","","是否sl"),))
     table[0][1].attr.colspan = 2
@@ -1586,7 +1586,9 @@ async def cddqkj(bot,ev):                   #由代刀表魔改而来，思路�
                    ta(((name,cybs1,cybs2,cybs3,cybs4,cybs5,cybs6,sl),))
 
     table.caption.set_style({
-    'font-size': '20px',})
+    'font-size': '30px',
+    'padding':'10px 0px',
+    'color':'#2b4490',})
     table.set_style({
     'border-collapse': 'collapse',
     'word-break': 'keep-all',
