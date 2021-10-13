@@ -2357,8 +2357,8 @@ class ClanBattle:
             return await render_template(
                 'clan/progress.html',
             )
-        #复制下面这段更改即可
-        @app.route(             
+
+        @app.route(
             urljoin(self.setting['public_basepath'],
                     'clan/<int:group_id>/daidao/api/'),
             methods=['GET'])
@@ -2405,6 +2405,10 @@ class ClanBattle:
                 'group_name': group.group_name,
                 'game_server': group.game_server,
                 'battle_id': group.battle_id,
+                'now_full_health':(self.bossinfo[group.game_server]
+                [self._level_by_cycle(
+                    group.boss_cycle, game_server=group.game_server)]
+                [group.boss_num-1]),
             },
             response = await make_response(jsonify(
                 code=0,

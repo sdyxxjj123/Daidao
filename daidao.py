@@ -1425,13 +1425,9 @@ async def cddqkj(bot,ev):                   #由代刀表魔改而来，思路�
     c = daoz[0]                          #未来还有可能完善的地方：json里member并没有公会里没出刀的人，所以没有这一行，意味着第一天看不到谁一刀没出
     b = daoz[1]  
     h = daoz[2]  
+    hz =daoz[4] 
     daozz = daoz[3]                           
     daozs = 90 - daozz
-    if b == 1:hz=6000000
-    if b == 2:hz=8000000
-    if b == 3:hz=10000000
-    if b == 4:hz=12000000
-    if b == 5:hz=15000000 #(一二三四五王血量,未来再想办法直接获取yobot的设置,这样不用设置两次)
     sl=''
     table = HTMLTable(caption=f'进度表 已出{daozz}刀,还剩{daozs}刀 当前状态{c}-{b}-({h}/{hz}) 指令"提醒未出刀"内测中')
     table.append_header_rows((
@@ -1623,11 +1619,12 @@ async def get_daoz(gid:str) -> str:
     challenges = data['challenges']
     Zhou = data["challenges"][-1]["cycle"]  # 获取Boss周目
     daoz = {}  #提取每人刀数
-    shuju = []#返一个数组回去包括(周目,boss,剩余血量,总刀数）,一次性调用完
+    shuju = []#返一个数组回去包括(周目,boss,剩余血量,总刀数,完整血量）,一次性调用完
     n =0   #天
     c = data["challenges"][-1]["cycle"]          #周目
     b = data["challenges"][-1]["boss_num"]       #boss
     h = data["challenges"][-1]["health_ramain"]  #剩余血量
+    nfh=data["groupinfo"][-1]["now_full_health"]
     daozz = 0                                    #当天总刀数
     members = data['members']
     for challenge in challenges:
@@ -1650,11 +1647,11 @@ async def get_daoz(gid:str) -> str:
            daoz[challenge['qqid']] += num     #排除一种情况：出刀后被踢了
     for qq in daoz:                     #未来还有可能完善的地方
         daozz += daoz[qq]
-        print(qq,':',daoz[qq])
     shuju.append(c)
     shuju.append(b)
     shuju.append(h)
     shuju.append(daozz)
+    shuju.append(nfh)
     return shuju
 
 @sv.on_fullmatch('提醒未出刀')                   
@@ -1689,8 +1686,7 @@ async def txwcd(bot,ev):                   #由代刀表魔改而来，思路一
           elif str(dao[qq][2])!= '0'and str(dao[qq][7])== '0' and str(dao[qq][17])!= '0': msg =''
           elif str(dao[qq][2])== '0'and str(dao[qq][7])== '0' and str(dao[qq][12])!= '0'and str(dao[qq][17])!= '0': msg =''
           else:
-             msgTX += f"[CQ:at,qq={qq}]" 
-             print(dao[qq])                                   
+             msgTX += f"[CQ:at,qq={qq}]"                                
         if len(dao[qq])==26:
           if str(dao[qq][22]) == '0' and str(dao[qq][21]) == 'False': 
              msgTX += f"[CQ:at,qq={qq}]"
