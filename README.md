@@ -99,7 +99,7 @@
 - 3.将battle.py放进yobot\src\client\ybplugins\clan_battle\其实没改只是最后加了个方法，建议不要替换直接复制粘贴最后一段
 - 非源码版请前往master分支，由于无法获取上面提的数据，公会第一天看不到谁一刀没出，非公会代刀者需加入公会并报刀0才有代刀表，进度表也看不到谁没sl
 - 进度表示例：
-- <img src="https://github.com/othinus001/Daidao/blob/perfect/jingdubiao.jpg" width="360" height="500"/><br/>
+- <img src="https://github.com/othinus001/Daidao/blob/perfect/进度表举例.jpg" width="360" height="500"/><br/>
 
 **只是个普通的开源插件**
 
