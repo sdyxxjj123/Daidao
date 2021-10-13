@@ -96,7 +96,8 @@
 用的两台windows测的，linux没试过，不过也有这个软件应该差不多?
 - 1.代刀表支持不在公会的外援代刀者，增加进度表。现在无论你在不在公会在不在群都能正确显示信息
 - 2.之所以搞个分支是考虑到很多人不是源码版yobot,此分支需改动yobot源码以获取sl数据和公会所有成员数据
-- 3.将battle.py放进yobot\src\client\ybplugins\clan_battle\其实没改只是最后加了个方法，建议不要替换直接复制粘贴最后一段
+- 3.将battle.py放进yobot\src\client\ybplugins\clan_battle\ 其实没改只是最后加了个方法，因为每个人都有修改，且很多人更新了空白间隔（我没更新）
+所以强烈建议不要替换，直接复制粘贴最后一段
 - 非源码版请前往master分支，由于无法获取上面提的数据，公会第一天看不到谁一刀没出，非公会代刀者需加入公会并报刀0才有代刀表，进度表也看不到谁没sl
 - 进度表示例：
 - <img src="https://github.com/othinus001/Daidao/blob/perfect/进度表举例.jpg" width="450" height="600"/><br/>
