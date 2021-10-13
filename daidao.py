@@ -1167,7 +1167,7 @@ async def checkupdate():
 
 async def get_dao(gid:str) -> str:
     apikey = get_apikey(gid)
-    url = f'{yobot_url}clan/{gid}/statistics/api/?apikey={apikey}'
+    url = f'{yobot_url}clan/{gid}/daidao/api/?apikey={apikey}'
     session = aiohttp.ClientSession()
     async with session.get(url) as resp:
         data = await resp.json()
@@ -1186,14 +1186,18 @@ async def get_dao(gid:str) -> str:
         if challenge['health_ramain'] == 0:
             num = 0.5
         if challenge['behalf'] == None or challenge['behalf'] == challenge['qqid']:
+         try:
             dao[challenge['qqid']] += num
+         except:
+           dao[challenge['qqid']] = 0
+           dao[challenge['qqid']] += num
         if challenge['behalf'] != None:
             continue
     return dao
 
 async def get_dai(gid:str) -> str:
     apikey = get_apikey(gid)
-    url = f'{yobot_url}clan/{gid}/statistics/api/?apikey={apikey}'
+    url = f'{yobot_url}clan/{gid}/daidao/api/?apikey={apikey}'
     session = aiohttp.ClientSession()
     async with session.get(url) as resp:
         data = await resp.json()
@@ -1214,6 +1218,10 @@ async def get_dai(gid:str) -> str:
         if challenge['behalf'] == None:
             continue
         if challenge['behalf'] != None and challenge['behalf'] != challenge['qqid']:
+          try:
+            dai[challenge['behalf']] += num
+          except:
+            dai[challenge['behalf']] = 0
             dai[challenge['behalf']] += num
     return dai
 
@@ -1231,15 +1239,20 @@ async def cddqk(bot,ev):
     table.append_header_rows((
     ("名字", "出刀数", "代刀数", "总出刀"),))
 
-    for qq in dao:
+    for qq in dai:
         try:
             name = (await bot.get_group_member_info(group_id=ev.group_id,user_id=qq))['card']
             if name == '':name = (await bot.get_group_member_info(group_id=ev.group_id,user_id=qq))['nickname']
         except:
             name = "不在群成员"
-        if dao[qq]+dai[qq] != 0:
-           table.append_data_rows(((name,str(dao[qq]), str(dai[qq]), str(dao[qq]+dai[qq])),))
-
+        if qq in dao:
+           a=dao[qq]+dai[qq]
+           if a != 0:
+            table.append_data_rows(((name,str(dao[qq]), str(dai[qq]), str(dao[qq]+dai[qq])),))
+        else:
+           a=dai[qq]
+           if a != 0:
+            table.append_data_rows(((name,'0', str(dai[qq]), str(dai[qq])),))
     table.caption.set_style({
     'font-size': '15px',})
     table.set_style({
