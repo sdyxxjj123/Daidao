@@ -47,8 +47,8 @@
 |合刀 伤害1 伤害2 （血量）|计算合刀，自动获取服务器，可以手动输入血量，也可以自动获取血量
 
 每天五点（日服四点）会清空所有数据！
-安装方法：
-yobot源码版用户：
+安装方法：  
+yobot源码版用户：  
 1.复制该插件到hoshino\modules\daidao,然后在_bot_.py中开启  
 2.pip install imgkit和pip install html-table两个依赖  
 3.安装wkhtmltopdf,安装完要把安装路径/bin加进环境变量，可以去官网或.[这个链接].(http://www.pc6.com/softview/SoftView_559241.html)  
