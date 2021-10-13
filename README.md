@@ -49,12 +49,12 @@
 每天五点（日服四点）会清空所有数据！
 安装方法：
 yobot源码版用户：
-1.复制该插件到hoshino\modules\daidao,然后在_bot_.py中开启 
-2.pip install imgkit和pip install html-table两个依赖
-3.安装wkhtmltopdf,安装完要把安装路径/bin加进环境变量，可以去官网或.[这个链接].(http://www.pc6.com/softview/SoftView_559241.html)
-4.将battle.py放进yobot\src\client\ybplugins\clan_battle\ 其实没改只是最后加了个方法，因为每个人都有修改，且很多人更新了空白间隔（我没更新）
-所以强烈建议不要替换，直接复制粘贴最后一段!!!!!
-（非yobot源码版用户前往master分支，不用做第四步）
+1.复制该插件到hoshino\modules\daidao,然后在_bot_.py中开启  
+2.pip install imgkit和pip install html-table两个依赖  
+3.安装wkhtmltopdf,安装完要把安装路径/bin加进环境变量，可以去官网或.[这个链接].(http://www.pc6.com/softview/SoftView_559241.html)  
+4.将battle.py放进yobot\src\client\ybplugins\clan_battle\ 其实没改只是最后加了个方法，因为每个人都有修改，且很多人更新了空白间隔（我没更新）  
+所以强烈建议不要替换，直接复制粘贴最后一段!!!!!  
+（非yobot源码版用户前往master分支，不用做第四步）  
 
 ### 注：V0.8版本目前为测试版，在公会战前随时可能需要更新！图片版代刀表可能会在会战后更新！
 #### V0.2版本修正   
@@ -98,16 +98,16 @@ yobot源码版用户：
 #### V0.82版本修正
 - 1.修正台服未能及时切换至五阶段的问题
 - 2.提前预装国服20S补偿机制
-#### 自魔改perfect分支
-需要pip install imgkit和html-table,并安装wkhtmltopdf,安装完要把安装路径/bin加进环境变量)，
-用的两台windows测的，linux没试过，不过也有这个软件应该差不多?
-- 1.代刀表支持不在公会的外援代刀者，增加进度表。现在无论你在不在公会在不在群都能正确显示信息
-- 2.之所以搞个分支是考虑到很多人不是源码版yobot,此分支需改动yobot源码以获取sl数据和公会所有成员数据
-- 3.将battle.py放进yobot\src\client\ybplugins\clan_battle\ 其实没改只是最后加了个方法，因为每个人都有修改，且很多人更新了空白间隔（我没更新）
-所以强烈建议不要替换，直接复制粘贴最后一段
-- 非源码版请前往master分支，由于无法获取上面提的数据，公会第一天看不到谁一刀没出，非公会代刀者需加入公会并报刀0才有代刀表，进度表也看不到谁没sl
-- 进度表示例：
-- <img src="https://github.com/othinus001/Daidao/blob/perfect/进度表举例.jpg" width="450" height="600"/><br/>
+#### 自魔改perfect分支  
+需要pip install imgkit和html-table,并安装wkhtmltopdf,安装完要把安装路径/bin加进环境变量)  
+用的两台windows测的，linux没试过，不过也有这个软件应该差不多?  
+- 1.代刀表支持不在公会的外援代刀者，增加进度表。现在无论你在不在公会在不在群都能正确显示信息  
+- 2.之所以搞个分支是考虑到很多人不是源码版yobot,此分支需改动yobot源码以获取sl数据和公会所有成员数据  
+- 3.将battle.py放进yobot\src\client\ybplugins\clan_battle\ 其实没改只是最后加了个方法，因为每个人都有修改，且很多人更新了空白间隔（我没更新）  
+所以强烈建议不要替换，直接复制粘贴最后一段  
+- 非源码版请前往master分支，由于无法获取上面提的数据，公会第一天看不到谁一刀没出，非公会代刀者需加入公会并报刀0才有代刀表，进度表也看不到谁没sl  
+- 进度表示例：  
+- <img src="https://github.com/othinus001/Daidao/blob/perfect/进度表举例.jpg" width="450" height="600"/><br/>  
 
 **只是个普通的开源插件**
 
