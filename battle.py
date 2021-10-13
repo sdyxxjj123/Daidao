@@ -2357,8 +2357,8 @@ class ClanBattle:
             return await render_template(
                 'clan/progress.html',
             )
-
-        @app.route(
+        #复制下面这段更改即可
+        @app.route(             
             urljoin(self.setting['public_basepath'],
                     'clan/<int:group_id>/daidao/api/'),
             methods=['GET'])
