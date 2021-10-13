@@ -1672,25 +1672,26 @@ async def txwcd(bot,ev):                   #由代刀表魔改而来，思路一
         except:
             name = f'qq{qq}'
             continue
-        if len(dao[qq])==0:
+        if len(dao[qq])==1:
            msgTX += f"[CQ:at,qq={qq}]"            
-        if len(dao[qq])==5:
+        if len(dao[qq])==6:
            msgTX += f"[CQ:at,qq={qq}]"    
-        if len(dao[qq])==10:
+        if len(dao[qq])==11:
            msgTX += f"[CQ:at,qq={qq}]" 
-        if len(dao[qq])==15:
+        if len(dao[qq])==16:
           if str(dao[qq][2])!= '0'and str(dao[qq][7])!= '0' and str(dao[qq][12])!= '0':
              msg =''
           else:
                 msgTX += f"[CQ:at,qq={qq}]"
-        if len(dao[qq])==20:
+        if len(dao[qq])==21:
           if str(dao[qq][2])!= '0'and str(dao[qq][7])!= '0': msg =''
           elif str(dao[qq][2])== '0'and str(dao[qq][7])!= '0' and str(dao[qq][17])!= '0': msg =''
           elif str(dao[qq][2])!= '0'and str(dao[qq][7])== '0' and str(dao[qq][17])!= '0': msg =''
+          elif str(dao[qq][2])== '0'and str(dao[qq][7])== '0' and str(dao[qq][12])!= '0'and str(dao[qq][17])!= '0': msg =''
           else:
-             msgTX += f"[CQ:at,qq={qq}]"          
-        if len(dao[qq])==25:
+             msgTX += f"[CQ:at,qq={qq}]" 
+             print(dao[qq])                                   
+        if len(dao[qq])==26:
           if str(dao[qq][22]) == '0' and str(dao[qq][21]) == 'False': 
              msgTX += f"[CQ:at,qq={qq}]"
-    msgTX += f"\n（目前需要档案内至少出一刀）"
     await bot.send(ev, msgTX)
