@@ -1642,7 +1642,7 @@ async def get_daoz(gid:str) -> str:
         else:
             num = 0.5
         if challenge['health_ramain'] == 0:
-            num = 0.
+            num = 0.5
         try:           
            daoz[challenge['qqid']] += num
         except:
@@ -1650,6 +1650,7 @@ async def get_daoz(gid:str) -> str:
            daoz[challenge['qqid']] += num     #排除一种情况：出刀后被踢了
     for qq in daoz:                     #未来还有可能完善的地方
         daozz += daoz[qq]
+        print(qq,':',daoz[qq])
     shuju.append(c)
     shuju.append(b)
     shuju.append(h)
