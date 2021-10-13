@@ -2357,6 +2357,7 @@ class ClanBattle:
             return await render_template(
                 'clan/progress.html',
             )
+          
         #复制下面这段即可，记得要和上面对齐（@和@对齐）
         @app.route(
             urljoin(self.setting['public_basepath'],
