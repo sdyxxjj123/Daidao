@@ -51,7 +51,7 @@
 yobot源码版用户：  
 1.复制该插件到hoshino\modules\daidao,然后在_bot_.py中开启  
 2.pip install imgkit和pip install html-table两个依赖  
-3.安装wkhtmltopdf,安装完要把安装路径/bin加进环境变量，可以去官网或 [这个链接附带安装方法](http://www.pc6.com/softview/SoftView_559241.html)   
+3.安装wkhtmltopdf,安装完要把安装路径/bin加进环境变量，下载可以去官网或 [这个链接](http://www.pc6.com/softview/SoftView_559241.html)   
 4.将battle.py放进yobot\src\client\ybplugins\clan_battle\ 其实没改只是最后加了个方法，因为每个人都有修改，且很多人更新了空白间隔（我没更新）  
 所以强烈建议不要替换，直接复制粘贴最后一段!!!!!  
 （非yobot源码版用户前往master分支，不用做第四步）  
