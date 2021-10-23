@@ -1199,11 +1199,7 @@ async def get_dai(gid:str) -> str:
 async def cddqk(bot,ev):
     gid = ev.group_id
     dao = await get_dao(gid)
-    try:
-        dai = await get_dai(gid)
-    except Exception as e:
-      await bot.send(ev, f'生成失败，请检查公会是否有代刀者，{type(e)}')
-      return
+    dai = await get_dai(gid)
     table = HTMLTable(caption='代刀表')
     # 表头行
     table.append_header_rows((
@@ -1374,6 +1370,7 @@ async def get_daotd(gid:str) -> str:
              daotds.append(hr)
              daotds.append(cy)
              daotds.append(bn)
+             daotds.append("???")             
              daots =challenge['qqid']             
        if member['sl']==n:sl=True
        daotdu.append(sl) 
@@ -1413,22 +1410,25 @@ async def cddqkj(bot,ev):                   #由代刀表魔改而来，思路�
             if name == '':name = (await bot.get_group_member_info(group_id=ev.group_id,user_id=qq))['nickname']
         except:
             name = f'qq{qq}'
-        n+=1
+        n+=1 
         if len(dao[qq])==6:        
            cybs1=f'{str(dao[qq][0])}({str(dao[qq][3])}-{str(dao[qq][4])})'
            if dao[qq][5]==False:sl=''
            if dao[qq][5]==True:sl='用掉了'
+           if dao[qq][5]=="???":sl="未知"
         if len(dao[qq])==11:
            cybs1=f'{str(dao[qq][0])}({str(dao[qq][3])}-{str(dao[qq][4])})'
            cybs2=f'{str(dao[qq][5])}({str(dao[qq][8])}-{str(dao[qq][9])})'
            if dao[qq][10]==False:sl=''
            if dao[qq][10]==True:sl='用掉了'
+           if dao[qq][10]=="???":sl="未知"
         if len(dao[qq])==16:
            cybs1=f'{str(dao[qq][0])}({str(dao[qq][3])}-{str(dao[qq][4])})'
            cybs2=f'{str(dao[qq][5])}({str(dao[qq][8])}-{str(dao[qq][9])})'
            cybs3=f'{str(dao[qq][10])}({str(dao[qq][13])}-{str(dao[qq][14])})'
            if dao[qq][15]==False:sl=''
            if dao[qq][15]==True:sl='用掉了'
+           if dao[qq][15]=="???":sl="未知"
         if len(dao[qq])==21:
            cybs1=f'{str(dao[qq][0])}({str(dao[qq][3])}-{str(dao[qq][4])})'
            cybs2=f'{str(dao[qq][5])}({str(dao[qq][8])}-{str(dao[qq][9])})'
@@ -1436,6 +1436,7 @@ async def cddqkj(bot,ev):                   #由代刀表魔改而来，思路�
            cybs4=f'{str(dao[qq][15])}({str(dao[qq][18])}-{str(dao[qq][19])})'
            if dao[qq][20]==False:sl=''
            if dao[qq][20]==True:sl='用掉了'
+           if dao[qq][20]=="???":sl="未知"
         if len(dao[qq])==26:
            cybs1=f'{str(dao[qq][0])}({str(dao[qq][3])}-{str(dao[qq][4])})'
            cybs2=f'{str(dao[qq][5])}({str(dao[qq][8])}-{str(dao[qq][9])})'
@@ -1444,6 +1445,7 @@ async def cddqkj(bot,ev):                   #由代刀表魔改而来，思路�
            cybs5=f'{str(dao[qq][20])}({str(dao[qq][23])}-{str(dao[qq][24])})'
            if dao[qq][25]==False:sl=''
            if dao[qq][25]==True:sl='用掉了'
+           if dao[qq][25]=="???":sl="未知"
         if len(dao[qq])==31:
            cybs1=f'{str(dao[qq][0])}({str(dao[qq][3])}-{str(dao[qq][4])})'
            cybs2=f'{str(dao[qq][5])}({str(dao[qq][8])}-{str(dao[qq][9])})'
@@ -1453,10 +1455,12 @@ async def cddqkj(bot,ev):                   #由代刀表魔改而来，思路�
            cybs6=f'{str(dao[qq][25])}({str(dao[qq][28])}-{str(dao[qq][29])})'
            if dao[qq][30]==False:sl=''
            if dao[qq][30]==True:sl='用掉了'
+           if dao[qq][10]=="???":sl="未知"
         if len(dao[qq])==1:                                                                  #一刀都没出的懒狗
            if dao[qq][0]==False:sl=''
            if dao[qq][0]==True:sl='用掉了'
-           ta(((name,'','','','','','',sl),))
+           if dao[qq][0]=="???":sl="未知"
+           ta(((name,'','','','','','',sl),)) 
            table[n][1].attr.colspan = 2
            table[n][3].attr.colspan = 2
            table[n][5].attr.colspan = 2
