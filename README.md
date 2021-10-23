@@ -121,8 +121,8 @@ yobot源码版用户：
 ### 感谢以下几位大佬  
 明见佬[@A-kirami](https://github.com/A-kirami) 优化日志处理方式  
 魔法书佬[@mahosho](https://github.com/mahosho) 优化触发器  
-[@mhy9989](github.com/mhy9989) BUG上报，内容测试  
-[@sdyxxjj123](github.com/sdyxxjj123) 项目fork自他的代码，pr好久没消息只好加上感谢了  
+[@mhy9989](https://github.com/mhy9989) BUG上报，内容测试  
+[@sdyxxjj123](https://github.com/sdyxxjj123) 项目fork自他的代码，pr好久没消息只好加上感谢了  
 感谢各位群友，感谢各位使用者！  
 yysy我一直以为这插件没人用的（），不过在别的群看到自己插件还是挺惊喜的    
 
