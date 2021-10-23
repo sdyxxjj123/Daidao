@@ -26,28 +26,13 @@ from HTMLTable import  HTMLTable
 sv = Service('daidao', bundle='daidao', help_='''
 '''.strip())
 
-boss_HP = {
-}
-bossData = {
-    'cn':{    
-    'hp1': [6000000, 8000000, 10000000, 12000000, 15000000],
-    'hp2': [6000000, 8000000, 10000000, 12000000, 15000000],
-    'hp3': [6000000, 8000000, 10000000, 12000000, 15000000],
-    'hp4': [6000000, 8000000, 10000000, 12000000, 15000000],
-    'hp5': [6000000, 8000000, 10000000, 12000000, 15000000],
-    },
-    'tw':{    
-    'hp1': [6000000, 8000000, 10000000, 12000000, 15000000],
-    'hp2': [6000000, 8000000, 10000000, 12000000, 15000000],
-    'hp3': [7000000, 9000000, 13000000, 15000000, 20000000],
-    'hp4': [17000000, 18000000, 20000000, 21000000, 23000000],
-    'hp5': [85000000, 90000000, 95000000, 100000000, 110000000],}
-}
+
 DAIDAO_DB_PATH = os.path.expanduser('~/.hoshino/daidao.db')
 DAIDAO_jpg_PATH = os.path.expanduser('~/.hoshino/')
 SUPERUSERS = config.SUPERUSERS
 GroupID_ON = True #当GO版本为0.94fix4以上时，允许从群内发起私聊（即使用管理员身份强制私聊，不需要对方主动私聊过），如果低于该版本请不要开启
-NOprivate = False #全局开关，启用后，不再尝试私聊，也不会在群内发送“私聊失败”等消息，仅做记录使用，降低机器人冻结风险。
+NOprivate = True #全局开关，启用后，不再尝试私聊，也不会在群内发送“私聊失败”等消息，仅做记录使用，降低机器人冻结风险。
+yesprivate = {}#上面填了True 的情况下，还想开私聊的白名单群（留给想只给自己群用的），按逗号隔开
 def get_db_path():
     if not (os.path.isfile(os.path.abspath(os.path.join(os.path.dirname(__file__), "../"
                                                         "yobot/yobot/src/client/yobot_data/yobotdata.db"))) or os.access(os.path.abspath(os.path.join(os.path.dirname(__file__), "../"
@@ -124,7 +109,6 @@ def check_update():
         msg = f"代刀插件有更新：\n您本地的版本为{Version}，目前最新的版本为{version_new},更新内容为{resp.text}\n建议您立刻前往https://github.com/sdyxxjj123/Daidao/更新"
         return msg
     except Exception as e:
-        sv.logger.error('【代刀插件】网络错误')
         return True
 
 
@@ -245,29 +229,13 @@ async def get_boss_Hao(gid:str) -> str:
 async def get_boss_HP(gid:str) -> str:
 
     apikey = get_apikey(gid)
-    url = f'{yobot_url}clan/{gid}/statistics/api/?apikey={apikey}'
+    url = f'{yobot_url}clan/{gid}/daidao/api/?apikey={apikey}'
     session = aiohttp.ClientSession()
     async with session.get(url) as resp:
         data = await resp.json()
         boss_hp = data["challenges"][-1]["health_ramain"]  # 获取最后一刀的boss血量
         if boss_hp == 0:
-            server = data["groupinfo"][-1]["game_server"]  # 获取服务器
-            Zhou = data["challenges"][-1]["cycle"]
-            Hao = data["challenges"][-1]["boss_num"]
-            Hao += 1
-            if Hao > 5:
-                Zhou += 1
-                Hao = 1
-            if Zhou <= 3:
-                boss_hp = bossData[server]['hp1'][Hao-1]
-            if Zhou <= 10:
-                boss_hp = bossData[server]['hp2'][Hao-1]
-            if Zhou <= 34:
-                boss_hp = bossData[server]['hp3'][Hao-1]
-            if Zhou >= 35:
-                boss_hp = bossData[server]['hp4'][Hao-1]
-            if Zhou >= 45:
-                boss_hp = bossData[server]['hp5'][Hao-1]
+           boss_hp=data["groupinfo"][-1]["now_full_health"]
         return boss_hp
 
 class DAICounter:
@@ -557,16 +525,17 @@ async def kakin(bot, ev: CQEvent):
             uid = int(m.data['qq'])
             owner = dai._get_Daidao_owner(gid,uid)
             if owner ==0:
-                Zhou = await get_boss_Zhou(gid)
-                Hao = await get_boss_Hao(gid)
-                HP = await get_boss_HP(gid)
+                daoz= await get_daoz(gid)
+                Zhou = daoz[0]
+                Hao = daoz[1]
+                HP = daoz[2]
                 if HP == 0:
                     Hao += 1
                     if Hao == 6:
                         Hao = 1
                         Zhou +=1
                 dai._set_DAIDAO_owner(gid,ev.user_id,uid,Zhou,Hao)
-                if not NOprivate:
+                if not NOprivate or gid in yesprivate:
                     try:
                         if GroupID_ON == True:
                             await bot.send_private_msg(user_id=int(uid),group_id=int(gid),message=f'您好~代刀手{user_card}({ev.user_id})正在为您代刀，请勿登录！本次代刀发起是在{Zhou}周目{Hao}号BOSS！')
@@ -598,14 +567,15 @@ async def baodao(bot, ev: CQEvent):
     dai = DAICounter()
     gid = ev.group_id
     num = 0
-    Zhou = await get_boss_Zhou(gid)
-    Hao = await get_boss_Hao(gid)
-    HP = await get_boss_HP(gid)
+    daoz= await get_daoz(gid)
+    Zhou = daoz[0]
+    Hao = daoz[1]
+    HP = daoz[2]
     if HP == 0:
-        Hao += 1
-        if Hao == 6:
-            Hao = 1
-            Zhou +=1 
+       Hao += 1
+       if Hao == 6:
+          Hao = 1
+          Zhou +=1
     for m in ev.message:
         if m.type == 'at' and m.data['qq'] != 'all':
             uid = int(m.data['qq'])
@@ -615,7 +585,7 @@ async def baodao(bot, ev: CQEvent):
             dai._delete_SH(gid,uid)
             user_card = await get_user_card(bot, ev.group_id, ev.user_id)
             num += 1
-            if not NOprivate:
+            if not NOprivate or gid in yesprivate:
                 try:
                     if GroupID_ON == True:
                         await bot.send_private_msg(user_id=int(uid),group_id=int(gid),message=f'您好~代刀手{user_card}({ev.user_id})已经为您代刀完毕!')
@@ -626,7 +596,6 @@ async def baodao(bot, ev: CQEvent):
                     await bot.send(ev, '发送私聊代刀消息时发生错误，该用户可能没有私聊过机器人（但代刀正常记录，若机器人是管理员，则消息已正常发出）')
             else:
                 await bot.send(ev, f"{user_card}代刀结束！")
-    await bot.send(ev, f"状态反馈：当前{Zhou}周目{Hao}号怪，血量{HP}.")
     if num == 0:
         uid = ev.user_id
         dai._delete_DAIDAO_owner(gid,uid)
@@ -691,13 +660,14 @@ async def weidao(bot, ev: CQEvent):
             msgGS += f"[CQ:at,qq={uid}]"
         if msgGS != "挂树的下来吧:\n":
             await bot.send(ev, msgGS)
-    Zhou = await get_boss_Zhou(gid)
-    Hao = await get_boss_Hao(gid)
-    HP = await get_boss_HP(gid)
+    daoz= await get_daoz(gid)
+    Zhou = daoz[0]
+    Hao = daoz[1]
+    HP = daoz[2]
     Hao += 1
     if Hao == 6:
-        Hao = 1
-        Zhou +=1 
+       Hao = 1
+       Zhou +=1
     for m in ev.message:
         if m.type == 'at' and m.data['qq'] != 'all':
             uid = int(m.data['qq'])
@@ -708,7 +678,7 @@ async def weidao(bot, ev: CQEvent):
             data = str(f'在{Zhou}周目{Hao}号BOSS收尾，代刀手为{user_card}')
             dai._set_BC_owner(gid,uid,data)
             num += 1
-            if not NOprivate:
+            if not NOprivate or gid in yesprivate:
                 try:
                     if GroupID_ON == True:
                         await bot.send_private_msg(user_id=int(uid), group_id=int(gid),message=f'您好~代刀手{user_card}({ev.user_id})已经为您代刀完毕!(您是尾刀，请关注群消息)')
@@ -719,18 +689,18 @@ async def weidao(bot, ev: CQEvent):
                     await bot.send(ev, '发送私聊代刀消息时发生错误，该用户可能没有私聊过机器人（但代刀正常记录，若机器人是管理员，则消息已正常发出）')
             else:
                 await bot.send(ev, f"{user_card}代刀结束！补偿刀信息已录入，请及时更新！")
-    await bot.send(ev, f"状态反馈：当前{Zhou}周目{Hao}号怪，血量{HP}.")
     if num == 0:
         uid = ev.user_id
         dai._delete_DAIDAO_owner(gid,uid)
-        Zhou = await get_boss_Zhou(gid)
-        Hao = await get_boss_Hao(gid)
-        HP = await get_boss_HP(gid)
+        daoz= await get_daoz(gid)
+        Zhou = daoz[0]
+        Hao = daoz[1]
+        HP = daoz[2]
         if HP == 0:
-            Hao += 1
-            if Hao == 6:
-                Hao = 1
-                Zhou +=1
+           Hao += 1
+           if Hao == 6:
+              Hao = 1
+              Zhou +=1
         data = str(f'在{Zhou}周目{Hao}号BOSS收尾')
         dai._set_BC_owner(gid,uid,data)
       
@@ -748,7 +718,7 @@ async def SLL(bot, ev: CQEvent):
             user_card = await get_user_card(bot, ev.group_id, ev.user_id)
             if dai._get_GS_id(gid,uid) !=0:
                 dai._delete_GS(gid,uid)
-            if not NOprivate:
+            if not NOprivate or gid in yesprivate:
                 try:
                     if GroupID_ON == True:
                         await bot.send_private_msg(user_id=int(uid),group_id=int(gid),message=f'您好~代刀手{user_card}({ev.user_id})使用了您的SL!请关注群消息！')
@@ -780,7 +750,7 @@ async def guashu(bot, ev: CQEvent):
             uid = int(m.data['qq'])
             user_card = await get_user_card(bot, ev.group_id, ev.user_id)
             dai._set_GS_owner(gid,uid,Hour,Min,id,ly)
-            if not NOprivate:
+            if not NOprivate or gid in yesprivate:
                 try:
                     if GroupID_ON == True:
                         await bot.send_private_msg(user_id=int(uid),group_id=int(gid),message=f'您好~代刀手{user_card}({ev.user_id})在您的账号上代刀时挂树!请暂时不要登陆并关注群消息！')
@@ -790,7 +760,7 @@ async def guashu(bot, ev: CQEvent):
                     await bot.send(ev, '发送私聊代刀消息时发生错误，该用户可能没有私聊过机器人（但代刀正常记录，若机器人是管理员，则消息已正常发出）')
             count += 1
     if count:
-        if not NOprivate:
+        if not NOprivate or gid in yesprivate:
             await bot.send(ev, f"{user_card}在代刀中挂树！已通知{count}位用户！")
         else:
             await bot.send(ev, f"{user_card}在代刀中挂树！")
@@ -838,7 +808,7 @@ async def quxiao(bot, ev: CQEvent):
             if owner !=0:
                 dai._delete_DAIDAO_owner(gid,uid)
                 user_card2 = await get_user_card(bot, ev.group_id, uid)
-                if not NOprivate:
+                if not NOprivate or gid in yesprivate:
                     try:
                         if GroupID_ON == True:
                             await bot.send_private_msg(user_id=int(uid),group_id=int(gid),message=f'您好~代刀手{user_card}({ev.user_id})取消了代刀！')
@@ -1614,16 +1584,25 @@ async def cddqkj(bot,ev):                   #由代刀表魔改而来，思路�
     await bot.send(ev,MessageSegment.image(f'file:///{DAIDAO_jpg_PATH}\\out.jpg'))
     
 async def get_daoz(gid:str) -> str:                  
-    with open(os.path.join(os.path.dirname(__file__),f"data.json"), "r", encoding='utf-8') as f:
-        data = json.load(f)
+    apikey = get_apikey(gid)
+    url = f'{yobot_url}clan/{gid}/daidao/api/?apikey={apikey}'
+    session = aiohttp.ClientSession()
+    async with session.get(url) as resp:
+        data = await resp.json()
+    with open(os.path.join(os.path.dirname(__file__),f"data.json"), "w", encoding='utf-8') as f:
+        f.write(json.dumps(data, indent=4,ensure_ascii=False))
     challenges = data['challenges']
-    Zhou = data["challenges"][-1]["cycle"]  # 获取Boss周目
     daoz = {}  #提取每人刀数
     shuju = []#返一个数组回去包括(周目,boss,剩余血量,总刀数,完整血量）,一次性调用完
     n =0   #天
-    c = data["challenges"][-1]["cycle"]          #周目
-    b = data["challenges"][-1]["boss_num"]       #boss
-    h = data["challenges"][-1]["health_ramain"]  #剩余血量
+    if  data["challenges"]!=[]:
+     c = data["challenges"][-1]["cycle"]          #周目
+     b = data["challenges"][-1]["boss_num"]       #boss
+     h = data["challenges"][-1]["health_ramain"]  #剩余血量
+    else:
+     c=1
+     b=1
+     h=6000000
     nfh=data["groupinfo"][-1]["now_full_health"]
     daozz = 0                                    #当天总刀数
     members = data['members']

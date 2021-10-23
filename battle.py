@@ -56,7 +56,7 @@ class ClanBattle:
         '后台': 15,
         'sl': 16,
         'SL': 16,
-        '查树': 20,
+        '查': 20,
         '查1': 21,
         '查2': 22,
         '查3': 23,
@@ -488,11 +488,11 @@ class ClanBattle:
         nik = user.nickname or user.qqid
         nik = escape(nik)
         if defeat:
-            msg = '{}对boss造成了{:,}点伤害，击败了boss\n（今日第{}刀，{}）'.format(
+            msg = '{}对boss造成了{:,}点伤害，消灭了boss\n今天第{}刀，（{}）'.format(
                 nik, health_before, finished+1, '尾余刀' if is_continue else '收尾刀'
             )
         else:
-            msg = '{}对boss造成了{:,}点伤害\n（今日第{}刀，{}）'.format(
+            msg = '{}对boss造成了{:,}点伤害\n今日第{}刀，（{}）'.format(
                 nik, damage, finished+1, '剩余刀' if is_continue else '完整刀'
             )
         status = BossStatus(
@@ -2483,67 +2483,3 @@ class ClanBattle:
                 response.headers['Access-Control-Allow-Origin'] = '*'
             return response
 
-        '''#复制上面这段优先，这段是备胎=========================================================================
-        @app.route(
-            urljoin(self.setting['public_basepath'],
-                    'clan/<int:group_id>/daidao/api/'),
-            methods=['GET'])
-        async def yobot_clan_daidao_api(group_id):
-            group = Clan_group.get_or_none(group_id=group_id)
-            if group is None:
-                return jsonify(code=20, message='Group not exists')
-            apikey = request.args.get('apikey')
-            if apikey:
-                # 通过 apikey 外部访问
-                if not (group.privacy & 0x2):
-                    return jsonify(code=11, message='api not allowed')
-                if apikey != group.apikey:
-                    return jsonify(code=12, message='Invalid apikey')
-            else:
-                # 内部直接访问
-                if 'yobot_user' not in session:
-                    return jsonify(code=10, message='Not logged in')
-                user = User.get_by_id(session['yobot_user'])
-                is_member = Clan_member.get_or_none(
-                    group_id=group_id, qqid=session['yobot_user'])
-                if (not is_member and user.authority_group >= 10):
-                    return jsonify(code=11, message='Insufficient authority')
-            battle_id = request.args.get('battle_id')
-            if battle_id is None:
-                pass
-            else:
-                if battle_id.isdigit():
-                    battle_id = int(battle_id)
-                elif battle_id == 'all':
-                    pass
-                elif battle_id == 'current':
-                    battle_id = None
-                else:
-                    return jsonify(code=20, message=f'unexceptd value "{battle_id}" for battle_id')
-            # start = int(request.args.get('start')) if request.args.get('start') else None
-            # end = int(request.args.get('end')) if request.args.get('end') else None
-            # report = self.get_report(group_id, None, None, start, end)
-            report = self.get_report(group_id, battle_id, None, None)
-            member_list = self.get_member_list(group_id)
-            #member_list = self.get_battle_member_list(group_id, battle_id)
-            groupinfo = {
-                'group_id': group.group_id,
-                'group_name': group.group_name,
-                'game_server': group.game_server,
-                'battle_id': group.battle_id,
-                'now_full_health':(self.bossinfo[group.game_server]
-                [self._level_by_cycle(
-                    group.boss_cycle, game_server=group.game_server)]
-                [group.boss_num-1]),
-            },
-            response = await make_response(jsonify(
-                code=0,
-                message='OK',
-                api_version=1,
-                challenges=report,
-                groupinfo=groupinfo,
-                members=member_list,
-            ))
-            if (group.privacy & 0x2):
-                response.headers['Access-Control-Allow-Origin'] = '*'
-            return response'''
