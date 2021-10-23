@@ -33,6 +33,8 @@ SUPERUSERS = config.SUPERUSERS
 GroupID_ON = True #当GO版本为0.94fix4以上时，允许从群内发起私聊（即使用管理员身份强制私聊，不需要对方主动私聊过），如果低于该版本请不要开启
 NOprivate = True #全局开关，启用后，不再尝试私聊，也不会在群内发送“私聊失败”等消息，仅做记录使用，降低机器人冻结风险。
 yesprivate = {}#上面填了True 的情况下，还想开私聊的白名单群（留给想只给自己群用的），按逗号隔开
+jindu_bt_color="#2b4490"#进度表标题颜色，不懂？百度颜色表
+jindu_bg_color="#48a6fb"#进度表表格颜色
 def get_db_path():
     if not (os.path.isfile(os.path.abspath(os.path.join(os.path.dirname(__file__), "../"
                                                         "yobot/yobot/src/client/yobot_data/yobotdata.db"))) or os.access(os.path.abspath(os.path.join(os.path.dirname(__file__), "../"
@@ -553,7 +555,7 @@ async def kakin(bot, ev: CQEvent):
                 user_card = await get_user_card(bot, ev.group_id, owner)
                 user_card2 = await get_user_card(bot, ev.group_id, uid)
                 await bot.send(ev, f'{user_card2}在{zhou}周目{hao}号BOSS由{user_card}发起了代刀，无法重复代刀')
-    if count and not NOprivate:
+    if count and not NOprivate or gid in yesprivate:
         if fail:
             await bot.send(ev, f"{user_card}开始代刀！已私聊通知{count}位用户！{fail}位用户通知失败！")
         else:
@@ -1558,7 +1560,7 @@ async def cddqkj(bot,ev):                   #由代刀表魔改而来，思路�
     table.caption.set_style({
     'font-size': '30px',
     'padding':'10px 0px',
-    'color':'#2b4490',})
+    'color':jindu_bt_color,})
     table.set_style({
     'border-collapse': 'collapse',
     'word-break': 'keep-all',
@@ -1574,7 +1576,7 @@ async def cddqkj(bot,ev):                   #由代刀表魔改而来，思路�
     'align':'center',})
     table.set_header_row_style({
     'color': '#fff',
-    'background-color': '#48a6fb',
+    'background-color': jindu_bg_color,
     'font-size': '15px',})
     table.set_header_cell_style({
     'padding': '15px',})
