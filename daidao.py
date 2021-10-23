@@ -34,7 +34,9 @@ GroupID_ON = True #当GO版本为0.94fix4以上时，允许从群内发起私聊
 NOprivate = True #全局开关，启用后，不再尝试私聊，也不会在群内发送“私聊失败”等消息，仅做记录使用，降低机器人冻结风险。
 yesprivate = {}#上面填了True 的情况下，还想开私聊的白名单群（留给想只给自己群用的），按逗号隔开
 jindu_bt_color="#2b4490"#进度表标题颜色，不懂？百度颜色表
-jindu_bg_color="#48a6fb"#进度表表格颜色
+jindu_bg_color="#48a6fb"#进度表表格 背景颜色
+jindu_wz_color="#fff"#进度表表格 文字颜色
+jindu_bk_color="#feeeed"#进度表表格 边框颜色
 def get_db_path():
     if not (os.path.isfile(os.path.abspath(os.path.join(os.path.dirname(__file__), "../"
                                                         "yobot/yobot/src/client/yobot_data/yobotdata.db"))) or os.access(os.path.abspath(os.path.join(os.path.dirname(__file__), "../"
@@ -1265,6 +1267,7 @@ async def cddqk(bot,ev):
 @sv.on_prefix(["合刀"])
 async def hedao(bot, ev):
     args = ev.message.extract_plain_text().split()
+    boss_HP={}
     if not args:
         return
     if len(args) < 2:
@@ -1569,13 +1572,13 @@ async def cddqkj(bot,ev):                   #由代刀表魔改而来，思路�
     'margin':'auto',})
     table.set_cell_style({
     'width': '250px',
-    'border-color': '#000',
+    'border-color': jindu_bk_color,
     'border-width': '1px',
     'border-style': 'solid',
     'font-size': '20px',
     'align':'center',})
     table.set_header_row_style({
-    'color': '#fff',
+    'color': jindu_wz_color,
     'background-color': jindu_bg_color,
     'font-size': '15px',})
     table.set_header_cell_style({
