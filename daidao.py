@@ -36,7 +36,7 @@ yesprivate = {}#上面填了True 的情况下，还想开私聊的白名单群�
 jindu_bt_color="#2b4490"#进度表标题颜色，不懂？百度颜色表
 jindu_bg_color="#48a6fb"#进度表表格 背景颜色
 jindu_wz_color="#fff"#进度表表格 文字颜色
-jindu_bk_color="#feeeed"#进度表表格 边框颜色
+jindu_bk_color="#181d4b"#进度表表格 边框颜色
 def get_db_path():
     if not (os.path.isfile(os.path.abspath(os.path.join(os.path.dirname(__file__), "../"
                                                         "yobot/yobot/src/client/yobot_data/yobotdata.db"))) or os.access(os.path.abspath(os.path.join(os.path.dirname(__file__), "../"
