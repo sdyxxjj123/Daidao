@@ -8,7 +8,8 @@ import math
 from datetime import datetime, timedelta
 import pytz
 from io import BytesIO
-from PIL import Image
+from prettytable import PrettyTable
+from PIL import Image, ImageDraw, ImageFont
 import hoshino
 from hoshino import Service, priv
 from hoshino.typing import CQEvent
@@ -33,7 +34,6 @@ bossData = {
     'hp2': [6000000, 8000000, 10000000, 12000000, 15000000],
     'hp3': [6000000, 8000000, 10000000, 12000000, 15000000],
     'hp4': [6000000, 8000000, 10000000, 12000000, 15000000],
-    'hp5': [6000000, 8000000, 10000000, 12000000, 15000000],
     },
     'tw':{    
     'hp1': [6000000, 8000000, 10000000, 12000000, 15000000],
@@ -81,7 +81,7 @@ if not DB_PATH:
     # 例：C:/Hoshino/hoshino/modules/yobot/yobot/src/client/yobot_data/yobotdata.db
     # 注意斜杠方向！！！
     #
-Version = '0.8.1'  
+Version = '0.9.0'  
 # 检查客户端版本
 def check_update_run():
     try:
@@ -264,8 +264,6 @@ async def get_boss_HP(gid:str) -> str:
                 boss_hp = bossData[server]['hp3'][Hao-1]
             if Zhou >= 35:
                 boss_hp = bossData[server]['hp4'][Hao-1]
-            if Zhou >= 45:
-                boss_hp = bossData[server]['hp5'][Hao-1]
         return boss_hp
 
 class DAICounter:
@@ -1174,7 +1172,6 @@ async def get_dao(gid:str) -> str:
     challenges = data['challenges']
     dao = {}
     members = data['members']
-    print(challenges)
     for member in members:
         dao[member['qqid']] = 0
     for challenge in challenges:
@@ -1213,7 +1210,10 @@ async def get_dai(gid:str) -> str:
         if challenge['behalf'] == None:
             continue
         if challenge['behalf'] != None and challenge['behalf'] != challenge['qqid']:
-            dai[challenge['behalf']] += num
+            try:
+                dai[challenge['behalf']] += num
+            except:
+                dai[challenge['behalf']] = 1
     return dai
 
 @sv.on_fullmatch('代刀表')
@@ -1221,16 +1221,33 @@ async def cddqk(bot,ev):
     gid = ev.group_id
     dao = await get_dao(gid)
     dai = await get_dai(gid)
-    newdao = ''
+    tab = PrettyTable()
+    tab.field_names = ["群昵称","QQ号","出刀","代刀","总出刀"]
     for qq in dao:
         try:
             name = (await bot.get_group_member_info(group_id=ev.group_id,user_id=qq))['nickname']
         except:
             name = "不在群成员"
         if dao[qq]+dai[qq] != 0:
-            newdao += name + ':' + '出刀'+str(dao[qq]) + '刀 ' + '  代刀' + str(dai[qq]) + '刀' + '   总出刀' + str(dao[qq]+dai[qq]) + '刀\n'
-    await bot.send(ev,str(newdao))
+            tab.add_row([f'{name}',f'{qq}',f'{dao[qq]}',f'{dai[qq]}',f'{dao[qq]+dai[qq]}'])
+    tab_info = str(tab)
+    space = 5
+    font = ImageFont.truetype('QYW3.ttf', 15, encoding='utf-8')
+    im = Image.new('RGB',(10, 10),(0,0,0,0))
+    draw = ImageDraw.Draw(im, "RGB")
+    img_size = draw.multiline_textsize(tab_info, font=font)
+    im_new = im.resize((img_size[0]+space*2, img_size[1]+space*2))
+    draw = ImageDraw.Draw(im_new, 'RGB')
+    draw.multiline_text((space,space), tab_info, fill=(255,255,255), font=font)
+    base64_str = im2base64str(im_new)
+    await bot.send(ev,f'[CQ:image,file={base64_str}]')
 
+def im2base64str(im):
+    io = BytesIO()
+    im.save(io, 'png')
+    base64_str = f"base64://{base64.b64encode(io.getvalue()).decode()}"
+    return base64_str
+    
 @sv.on_prefix(["合刀"])
 async def hedao(bot, ev):
     args = ev.message.extract_plain_text().split()
