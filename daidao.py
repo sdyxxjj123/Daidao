@@ -74,49 +74,7 @@ if not DB_PATH:
     #
 Version = '0.8.1'  
 # 检查客户端版本
-def check_update_run():
-    try:
-        url = 'http://update.ftcloud.top:5050/version'
-        resp = requests.get(url)
-        resp.encoding = 'UTF-8'
-        if resp.status_code != 200:
-            sv.logger.error('【代刀插件】服务器连接失败')
-            return True
-        if resp.text == Version:
-            sv.logger.info('【代刀插件】插件已是最新版本')
-            return True
-        version_new = resp.text
-        url_log = 'http://update.ftcloud.top:5050/new/log'
-        resp = requests.get(url_log)
-        resp.encoding = 'UTF-8'
-        sv.logger.info(f"代刀插件有更新\n您本地的版本为{Version}，目前最新的版本为{version_new},更新内容为{resp.text}\n建议您立刻前往https://github.com/sdyxxjj123/Daidao/更新")
-        return True
-    except Exception as e:
-        sv.logger.error('【代刀插件】网络错误')
-        return True
-#定时检查并私聊给管理员
-def check_update():
-    try:
-        url = 'http://update.ftcloud.top:5050/version'
-        resp = requests.get(url)
-        resp.encoding = 'UTF-8'
-        if resp.status_code != 200:
-            sv.logger.error('【代刀插件】服务器连接失败')
-            return True
-        if resp.text == Version:
-            sv.logger.info('【代刀插件】插件已是最新版本')
-            return True
-        version_new = resp.text
-        url_log = 'http://update.ftcloud.top:5050/new/log'
-        resp = requests.get(url_log)
-        resp.encoding = 'UTF-8'
-        msg = f"代刀插件有更新：\n您本地的版本为{Version}，目前最新的版本为{version_new},更新内容为{resp.text}\n建议您立刻前往https://github.com/sdyxxjj123/Daidao/更新"
-        return msg
-    except Exception as e:
-        return True
 
-
-check_update_run()
 async def get_user_card(bot, group_id, user_id):
     mlist = await bot.get_group_member_list(group_id=group_id)
     for m in mlist:
@@ -1129,15 +1087,7 @@ async def clock():
                 uid = int(umlist[s])   
                 dai._delete_BC(gid,uid)
 
-@sv.scheduled_job('cron', hour ='*',)
-async def checkupdate():
-    now = datetime.now(pytz.timezone('Asia/Shanghai'))
-    if now.hour !=5:
-        return
-    bot = nonebot.get_bot()
-    log = check_update()
-    if log != True:
-        await bot.send_private_msg(user_id=int(SUPERUSERS[0]), message=log)
+
 
 async def get_dao(gid:str) -> str:
     apikey = get_apikey(gid)
